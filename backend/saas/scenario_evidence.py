@@ -1,10 +1,12 @@
 """Persist safe scenario summaries and observe committed collector evidence."""
 
+from datetime import timedelta
 import json
 
 from fastapi import HTTPException
 
-from backend.shared.models import MetadataPayload, canonical_bytes
+from backend.shared.models import MetadataPayload, canonical_bytes, parse_utc, utc_now, utc_text
+from backend.shared.scenarios import RESULT_GRACE_SECONDS, scenario_timeout
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS scenario_result (
@@ -19,6 +21,8 @@ CREATE INDEX IF NOT EXISTS scenario_by_number ON scenario_result (tenant_id,scen
 async def save(storage, credential, result):
     if not credential.demo_source_ids:
         raise HTTPException(403, "A demo collector is required")
+    if parse_utc(result.started_at_utc) > utc_now() + timedelta(seconds=5):
+        raise HTTPException(422, "Scenario start is in the future")
     body = canonical_bytes(result)
     tenant, collector = credential.tenant_id, credential.collector_id
     async with storage.write():
@@ -60,7 +64,23 @@ async def latest(storage, tenant):
                (PARTITION BY scenario_id ORDER BY started_at DESC,run_id DESC) AS rank
                FROM scenario_result WHERE tenant_id=?) WHERE rank=1 ORDER BY scenario_id""", (tenant,),
         )
-    return [json.loads(row[0]) for row in rows]
+    now = utc_now()
+    results = [json.loads(row[0]) for row in rows]
+    for result in results:
+        if result["status"] != "running":
+            continue
+        # Keep the stored run open for genuine evidence that arrives after reconnect.
+        window = timedelta(seconds=scenario_timeout(result["scenario_id"]) + RESULT_GRACE_SECONDS)
+        try:
+            started = parse_utc(result["started_at_utc"])
+        except ValueError:  # A runtime created before timestamp validation may contain invalid dates.
+            deadline = now
+        else:
+            if started > now - window:
+                continue
+            deadline = started + window
+        result.update(status="blocked", reason_code="result_not_reported", finished_at_utc=utc_text(deadline))
+    return results
 
 
 async def observe(storage, credential, ids):

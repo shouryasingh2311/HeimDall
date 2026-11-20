@@ -85,6 +85,8 @@ DemoSource methods: tick(now_utc), inject(scenario_id, seed), snapshot(), restor
 
 ScenarioResult: run_id, scenario_id, status (running/passed/failed/blocked), started_at_utc, finished_at_utc, checks (fixed check-name enum; boolean/number/null actual/expected), payload_uuids, incident_ids, missing_ids, duplicate_count, bounded reason_code. No free-form error/log blobs. Raw local inspection stays local; central summary carries approved IDs/counters only.
 
+The SaaS view reports a running scenario as blocked with `result_not_reported` after its execution timeout plus 30 seconds. The stored run remains eligible for genuine completion evidence after reconnect.
+
 ## UI and timing
 
 M2 uses one API wrapper, 2s polling, cancelled overlapping requests and honest disconnected/stale state. Capture first visible rendering of each payload ID after React commit/frame scheduling; submit run_id/session_id/payload_uuid/rendered_at_utc once. Do not measure fetch completion or every poll. Label browser timing resolution and clock uncertainty. M1 checks referenced IDs belong to operator tenant. This records browser render timing and does not produce cryptographic proofs.

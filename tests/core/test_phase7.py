@@ -1,14 +1,43 @@
 """Rehearse all eight scenarios against real local and central services."""
 
+from datetime import timedelta
 import os
 import sqlite3
 import subprocess
 import sys
 import time
+from uuid import uuid4
 
 import httpx
 
+from backend.shared.models import utc_now, utc_text
 from test_phase1 import collector_headers, operator, process, service, settings, wait_for
+
+
+def test_expired_scenario_is_blocked_until_collector_reports_completion(service):
+    runtime, central, _, _ = service
+    edge = collector_headers(settings(runtime, "alpha"))
+    viewer = operator(runtime, "alpha")
+    endpoint = "/api/v1/scenario-results"
+    now = utc_now()
+    for number, age, expected in ((1, 100, "blocked"), (2, 5, "running"), (8, 190, "running")):
+        active = dict(run_id=str(uuid4()), scenario_id=number, status="running",
+                      started_at_utc=utc_text(now - timedelta(seconds=age)))
+        central.post(endpoint, headers=edge, json=active).raise_for_status()
+        current = next(row for row in central.get(endpoint, headers=viewer).json() if row["scenario_id"] == number)
+        assert current["status"] == expected and current["run_id"] == active["run_id"]
+        if expected == "blocked":
+            assert current["reason_code"] == "result_not_reported"
+            finished = dict(active, status="failed", finished_at_utc=utc_text(now), reason_code="evidence_timeout")
+            central.post(endpoint, headers=edge, json=finished).raise_for_status()
+            latest = central.get(endpoint, headers=viewer).json()[0]
+            assert latest["status"] == "failed" and latest["reason_code"] == "evidence_timeout"
+
+    assert central.get(endpoint, headers=operator(runtime, "beta")).json() == []
+    bad_time = dict(active, run_id=str(uuid4()), started_at_utc="2026-02-30T12:00:00Z")
+    assert central.post(endpoint, headers=edge, json=bad_time).status_code == 422
+    future = dict(bad_time, started_at_utc=utc_text(now + timedelta(hours=1)))
+    assert central.post(endpoint, headers=edge, json=future).status_code == 422
 
 
 def test_live_scenarios_repeat_and_report_only_observed_results(service, tmp_path):
