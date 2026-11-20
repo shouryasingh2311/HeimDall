@@ -1,75 +1,20 @@
-# Roadmap: Cicada AIOps Observability Platform
+# Roadmap: one eight-hour integrated prototype
 
-## Milestone v1.0: Hackathon MVP & Judge Validation Suite
+All eight phases remain. They are capability/acceptance groups, not sequential blocking work. Read TEAM_EXECUTION.md and each MEMBER guide for executable work queues.
 
-**Milestone Goal:** Deliver a complete, deploy-anywhere, two-tier AIOps observability platform with local-first data protection, Egress Proof verification, durable offline buffering, explainable AIOps correlation, and full coverage of all 4 hackathon judging checkpoints and 8 live validation scenarios.
+| Phase | Accountable | Integration target | Acceptance |
+|---|---|---|---|
+| 1 Core architecture/TLS/tenant scope | M1 | G0-G1 | V00,V01,V02 |
+| 2 Local privacy and proof | M1; M3 local view, M2 receipt view | G1-G2 | V03 |
+| 3 Durable outbox/dedup/event-time policy | M1; M3 fault tests | G2 | V04,V09 |
+| 4 Metrics/health/actual performance | M1; M2 browser timing | G2-G3, final G5 | V05,V07,V10 |
+| 5 Statistical AIOps/security/correlation | M1; M3 controls, M2 evidence UI | G3 | V06,V08 |
+| 6 Approved demo action/snapshot rollback | M1; M3 helper, M2 controls | G4 | V11 |
+| 7 Organizer adapter/eight scenario verifier | M3; M1 protected plumbing | Start G0, complete G4-G5 | V00,V03-V12 |
+| 8 Live operations UI/judge evidence | M2; M1 integration, M3 runbook | Start G0, complete G5-G6 | V12,V13 and UI evidence |
 
----
+## Gates
 
-### Phase 1: Two-Tier Core Architecture & Secure Transport
-**Goal:** Establish the Tier 1 Local Collector daemon and Tier 2 Central Multi-Tenant SaaS platform with token/TLS authentication and regional endpoint routing.
-**Requirements:** ARCH-01, ARCH-02, ARCH-03, ARCH-04
-**Success Criteria:**
-1. Local collector connects to SaaS ingest endpoint with cryptographic token authentication.
-2. Multi-tenant isolation verified by sending telemetry under distinct tenant IDs with complete partition separation.
-3. Regional ingest routing correctly maps requests by region header (`us-east-1`, `eu-west-1`, `ap-south-1`).
+G0 0:30 contracts/ownership agreed; G1 2:00 one event visible end-to-end; G2 3:30 privacy/reliability/health; G3 5:00 minimal AIOps; G4 5:45 all eight scenario behaviors; G5 7:00 acceptance evidence/fixes; G6 8:00 clean-start rehearsal and presentation.
 
-### Phase 2: Local Privacy Pipeline & Egress Proof Panel
-**Goal:** Implement client-side secret scrubbing (passwords, tokens, API keys), field allow-listing, pseudonymization, and the tamper-evident Egress Proof UI.
-**Requirements:** PRIV-01, PRIV-02, PRIV-03, PRIV-04, PRIV-05
-**Success Criteria:**
-1. Raw logs containing secrets (e.g. AWS keys, passwords, bearer tokens) are scrubbed before any network call.
-2. Any property not explicitly listed in metadata allow-list is dropped.
-3. Egress Proof Panel renders a live audit log displaying exact pre-scrub raw telemetry alongside post-scrub egress payload.
-
-### Phase 3: Resilient Offline Buffering & Idempotent Ingestion
-**Goal:** Implement local SQLite WAL outage buffer with exponential backoff retry and SaaS-side idempotent deduplication with UTC event-time indexing.
-**Requirements:** BUFF-01, BUFF-02, IDEM-01, IDEM-02, IDEM-03
-**Success Criteria:**
-1. During simulated SaaS outage, collector buffers all approved metadata into SQLite without memory bloat or crash.
-2. When SaaS reconnects, all buffered records are drained and delivered with zero record loss.
-3. Out-of-order and replayed duplicate payloads are de-duplicated by UUID with zero duplicates stored.
-
-### Phase 4: Telemetry Metrics Engine, Health States & Benchmarking
-**Goal:** Ingest infrastructure/network metrics, evaluate 4 operational health states (Excellent, Good, Fair, Poor), and enforce real-time performance targets.
-**Requirements:** METR-01, METR-02, HLTH-01, HLTH-02, HLTH-03, PERF-01, PERF-02, PERF-03
-**Success Criteria:**
-1. Real-time metric ingestion tracks CPU, RAM, disk, network bandwidth, latency, and packet loss.
-2. System health dynamically updates across `Excellent`, `Good`, `Fair`, `Poor` based on configurable baselines.
-3. Stale data (>30s) automatically degrades health status instead of holding last good value.
-4. Measured collection-to-dashboard latency is $\le 10$s at p95; collector offline detection triggers within 60s.
-
-### Phase 5: Explainable AIOps Anomaly Detection & Incident Correlation
-**Goal:** Develop dynamic baselining (EWMA / Z-score), local security attack scoring, multi-signal alert correlation, and transparent reasoning path generation.
-**Requirements:** AIOP-01, AIOP-02, AIOP-03, AIOP-04, AIOP-05
-**Success Criteria:**
-1. AIOps flags anomalies when metrics deviate from dynamic baseline, ignoring normal non-anomalous spikes.
-2. Local security analysis detects repeated failed logins and emits risk score without transmitting credentials.
-3. Alert correlation engine groups related alerts across systems/services into single root-cause incidents.
-4. Each incident outputs explainable recommendations with contributing signals, baseline deltas, confidence score, and reasoning path.
-
-### Phase 6: Autonomous Ops Simulator & Policy-Guarded Remediation
-**Goal:** Build the human-in-the-loop autonomous remediation system with policy validation, execution simulation, and rollback controls.
-**Requirements:** AUTO-01, AUTO-02, AUTO-03
-**Success Criteria:**
-1. Recommendation engine suggests contextual remediation action for incidents.
-2. Policy gate blocks unapproved action until operator explicitly clicks approve.
-3. Remediation execution is logged to audit trail with a verifiable simulated rollback plan.
-
-### Phase 7: Interactive Chaos Engine & 8 Live Validation Scenarios
-**Goal:** Create the unified test harness and synthetic stream generator with 1-click execution for all 8 hackathon evaluation scenarios.
-**Requirements:** SIMU-01, SIMU-02, SIMU-03, SIMU-04, SIMU-05, SIMU-06, SIMU-07, SIMU-08, SIMU-09
-**Success Criteria:**
-1. Realistic multi-node telemetry stream runs continuously.
-2. Single-click trigger validates each of the 8 mandatory scenarios (raw secret scrub, SaaS outage buffer, brute-force security scoring, latency spike, CPU baseline deviation, alert correlation storm, out-of-order duplicate delivery, safe remediation).
-
-### Phase 8: Unified Operations Dashboard & Judge Verification Suite
-**Goal:** Deliver the unified responsive dashboard featuring side-by-side comparison, fleet health visualizers, incident drill-down, and live demo controls.
-**Requirements:** DASH-01, DASH-02, DASH-03, DASH-04
-**Success Criteria:**
-1. Dashboard displays real-time health badges, latency gauges, and collector fleet status.
-2. Side-by-side view visually proves raw secret on collector vs. redacted metadata on SaaS.
-3. 1-click scenario runner triggers and verifies judge scenarios on the spot.
-
----
-*Roadmap defined: 2026-11-20*
+No phase is complete merely because its files exist. If external organizer data is missing, label the gate blocked for compatibility and demo fallback honestly. Cut optional polish/connectors, not required behavior. The full production vision is deliberately out of scope.
