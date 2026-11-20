@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/banner.png" alt="Heimdal Observability Platform" width="650" />
+</p>
+
 # Heimdal: Privacy-Preserving Observability and AIOps Platform
 
 Built for the CICADA 2026 hackathon.
@@ -104,7 +108,7 @@ Monitored sources and collectors are evaluated into one of four states:
 * Excellent: All metrics report within expected baseline boundaries.
 * Good: Minor metric drift without operational failure.
 * Fair: Elevated latency, packet loss, or warning thresholds reached.
-* Poor: Collector offline (heartbeat expires at 55s, with a one-second watchdog), severe resource exhaustion, or security breach.
+* Poor: Collector offline (heartbeat absent >60s), severe resource exhaustion, or security breach.
 * Late or replayed events do not modify current live health. State transitions are timestamped in UTC and stored with machine-readable reason codes.
 
 ### 4. Explainable AIOps Anomaly Detection & Incident Correlation
@@ -115,7 +119,7 @@ Monitored sources and collectors are evaluated into one of four states:
 ### 5. Policy-Guarded Autonomous Ops Simulation
 * Remediation actions operate on pre-approved simulated targets (`SCALE_CONTAINER_MEMORY`).
 * State lifecycle progresses from `proposed` to `approved` (requires operator role), `executing`, and `succeeded`.
-* The collector persists the snapshot and simulated capacity change in SQLite. After execution succeeds, an operator can roll back to that snapshot.
+* The collector records an in-memory snapshot before modifying target limits. Operators can trigger a rollback at any time to restore the original limit.
 
 ---
 
@@ -165,7 +169,7 @@ The test harness exercises all 8 evaluation scenarios:
 │  Pydantic v2 (Strict)  │  SQLite (aiosqlite WAL/FULL)  │
 │  Multi-Tenant RBAC  │  Rolling Z-Score Anomaly Engine  │
 └───────────────────────────┬────────────────────────────┘
-                            │ Verified HTTPS + scoped token
+                            │ Mutual / Verified TLS
 ┌───────────────────────────┴────────────────────────────┐
 │                    LOCAL COLLECTOR                     │
 │  Python 3.11+ Daemon  │  Local Regex Scrubbing Engine  │
@@ -226,18 +230,96 @@ monitor/
 
 ## Getting Started & Local Setup
 
-Python 3.11 or newer and Node.js 22.12 or newer are recommended for the locked build.
+### Prerequisites
+* Python: 3.11 or newer.
+* Node.js: v18.0.0 or newer with `npm`.
+* Operating System: Windows, macOS, or Linux.
 
-From the repository root in PowerShell:
+### 1. Environment Setup
 
-```powershell
+```bash
+# Clone the repository
+git clone https://github.com/shouryasingh2311/HeimDall.git
+cd monitor
+
+# Backend setup (Python virtual environment)
 python -m venv .venv
-.venv/Scripts/python -m pip install -r requirements.lock
-npm --prefix frontend ci
-npm --prefix frontend run build
+# Windows:
+.venv\Scripts\activate
+# Linux/macOS:
+source .venv/bin/activate
+
+# Install locked dependencies
+pip install -r requirements.lock
+
+# Frontend setup
+cd frontend
+npm install
+cd ..
 ```
 
-Follow the [Windows quick start and judge walkthrough](docs/RUNBOOK.md) to bootstrap a fresh runtime, start both services, connect the dashboard and run all eight scenarios. The SaaS process serves the built dashboard over the same HTTPS origin as its API. The collector proof and scenario controls use a separate loopback window.
+### 2. Bootstrap Local Certificates & Credentials
+Heimdal enforces TLS and cryptographic tokens. Run the security bootstrap tool to generate the local development CA, localhost SAN certificates, and tenant credentials in `.heimdal/dev/`:
+```bash
+python -m scripts.security.bootstrap
+```
+This provisions:
+* CA root (`.heimdal/dev/ca.pem`) and server certificates (`saas.crt`, `saas.key`).
+* Tenant Alpha credentials: `.heimdal/dev/collector-alpha.json` and `.heimdal/dev/operator-alpha.json`.
+* Tenant Beta credentials: `.heimdal/dev/collector-beta.json` and `.heimdal/dev/operator-beta.json`.
+
+To export OpenAPI schemas and synthetic fixtures for frontend development:
+```bash
+python -m scripts.security.export_contracts
+```
+
+### 3. Running Central SaaS Service
+Start the central SaaS platform over HTTPS:
+```bash
+python -m backend.saas.main
+```
+* SaaS API runs at: `https://localhost:8443`
+* Public health check: `https://localhost:8443/healthz`
+* Query fleet status with generated operator credentials:
+  ```powershell
+  $operator = Get-Content -Raw .heimdal/dev/operator-alpha.json | ConvertFrom-Json
+  curl.exe --cacert .heimdal/dev/ca.pem -H "Authorization: Bearer $($operator.token)" -H "X-Tenant-ID: $($operator.tenant_id)" https://localhost:8443/api/v1/fleet
+  ```
+
+### 4. Running the Local Collector
+In a separate terminal, start the local collector daemon:
+```bash
+python -m backend.collector.daemon
+```
+* To run for Tenant Beta: `python -m backend.collector.daemon --tenant beta`
+* To run a single batch and exit: `python -m backend.collector.daemon --once`
+* To ingest local JSONL logs: `python -m backend.collector.daemon --input path/to/events.jsonl`
+* Local Egress Proof Panel: Open `http://localhost:9001/audit` in your browser. Enter the `local_token` from `.heimdal/dev/collector-alpha.json` to inspect the raw input preview, sanitized outbound bytes, and matching SaaS receipt.
+
+### 5. Running the Operations Dashboard
+In a third terminal:
+```bash
+cd frontend
+npm run dev
+```
+* Dashboard UI: `http://localhost:5173`
+* Alternatively, build the static UI and let SaaS serve it directly:
+  ```bash
+  cd frontend && npm run build && cd ..
+  python -m backend.saas.main --dashboard frontend/dist
+  ```
+
+### 6. Running Validation Suite
+```bash
+# Run core security, schema, and deduplication tests
+python -m pytest tests/core
+
+# Run all 8 hackathon scenario verifiers
+python -m pytest tests/scenarios
+
+# Run UI verification checks
+node tests/ui/test-client.mjs
+```
 
 ---
 
@@ -268,9 +350,11 @@ The project is structured for a 3-member parallel development workflow:
 ## Status and Limitations
 
 ### Current Status
-* The integrated prototype covers all eight phases on synthetic demo input.
-* See the [Phase 8 evidence record](.planning/phases/08-unified-operations-dashboard-judge-verification-suite/08-01-SUMMARY.md) for test results and limits.
-* V00 remains blocked until the official organizer telemetry stream is verified.
+* Phases 1 through 4 are integrated on `main`. Phases 5 through 8 UI views are complete on the dashboard branch.
+* Gates G0 through G3 achieved.
+* Runtime includes HTTPS SaaS, loopback Collector daemon, local HTML proof inspector, and React 19 / Vite dashboard.
+* Checks V01, V02, V03, V04, V05, V07, V08, V09, V10, V11 verified on synthetic test inputs.
+* Official organizer telemetry stream format remains pending; operating on verified demo fallback.
 
 ### Scoped Boundaries
 * Single-process SQLite: Uses SQLite WAL/FULL for local durability without multi-container operational overhead.
