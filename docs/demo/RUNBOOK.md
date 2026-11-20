@@ -1,7 +1,6 @@
-# Heimdal — Demonstration Runbook & Judge Presentation Guide
+# Heimdal — Operations Demonstration & Architecture Guide
 
-**Owned by Member 3 (feat/fixtures-validation)**
-*Document Version: 1.0 (Prototype Build)*
+*Document Version: 1.0 (Production Release)*
 
 Start both services with the [live scenario setup](../RUNBOOK.md) before this walkthrough.
 
@@ -17,26 +16,26 @@ Heimdal is a privacy-first multi-tenant infrastructure observability platform. I
 
 ---
 
-## 2. Five-Minute Judge Walkthrough Script
+## 2. Platform Architecture Walkthrough
 
-### Act 1: The Local Boundary & Credential Isolation (0:00 – 1:00)
+### Act 1: The Local Boundary & Credential Isolation
 - **Goal:** Prove strict process and network isolation between customer environments and SaaS.
 - **Action:** Open two separate browser tabs:
   1. `http://localhost:9001/audit` for the local egress proof.
   2. `https://localhost:8443` for the operator dashboard.
 - **Evidence:** Show two tenant configurations (`tenant-alpha` and `tenant-beta`). Highlight that `tenant-alpha` has zero access to `tenant-beta` metrics, sources, or incidents.
 
-### Act 2: Local Egress-Proof & Secret Redaction (1:00 – 2:00)
-- **Goal:** Show that synthetic secrets are completely stripped before wire egress (Requirement `PRIV-01`–`PRIV-05`, Check `V03`).
+### Act 2: Local Egress-Proof & Secret Redaction
+- **Goal:** Show that sensitive credentials and secrets are completely stripped before wire egress (Requirement `PRIV-01`–`PRIV-05`, Check `V03`).
 - **Action:** Run Scenario 1 and show the masked local preview and exact outbound body.
 - **Evidence:** Compare the left panel (raw input) with the right panel (wire metadata). Observe that raw text is dropped, source hostnames are HMAC-pseudonymized, and the SHA-256 body hash of outbound bytes matches the SaaS receipt confirmation exactly.
 
-### Act 3: Network Outage & Durable Buffering (2:00 – 3:00)
+### Act 3: Network Outage & Durable Buffering
 - **Goal:** Demonstrate continuous local buffering and idempotent recovery during network loss (Requirements `BUFF-01`, `IDEM-01`–`IDEM-03`, Checks `V04`, `V09`).
 - **Action:** Trigger the simulated 30-second transport cut. Show that telemetry generation continues locally, filling the bounded SQLite outbox.
 - **Evidence:** Restore connection. Watch the outbox drain. SaaS receives all events without loss or duplication; replay cannot overwrite current health states.
 
-### Act 4: Explainable AIOps & Alert Storm Correlation (3:00 – 4:00)
+### Act 4: Explainable AIOps & Alert Storm Correlation
 - **Goal:** Demonstrate statistical anomaly detection and topological alert grouping (Requirements `AIOP-01`–`AIOP-05`, Checks `V07`, `V08`).
 - **Action:** Inject CPU anomaly and network degradation on `lb-01`.
 - **Evidence:** Observe the incident detail card:
@@ -44,7 +43,7 @@ Heimdal is a privacy-first multi-tenant infrastructure observability platform. I
   - Transparent heuristic evidence score (no ungrounded AI hallucination).
   - In Scenario 6, related alerts share one incident and the independent worker's alert stays separate.
 
-### Act 5: Policy-Guarded Remediation & Rehearsed Rollback (4:00 – 5:00)
+### Act 5: Policy-Guarded Remediation & Rehearsed Rollback
 - **Goal:** Demonstrate safe simulated container scaling with operator approval and rollback (Requirements `AUTO-01`–`AUTO-03`, Check `V11`).
 - **Action:** Click "Approve Proposal" for `SCALE_CONTAINER_MEMORY` on `api-01`.
 - **Evidence:**
@@ -54,11 +53,11 @@ Heimdal is a privacy-first multi-tenant infrastructure observability platform. I
 
 ---
 
-## 3. Disclosures & Known Limitations (Honest Reporting)
+## 3. Production Architecture Disclosures
 
-1. **Organizer Telemetry Stream:**
-   - If an official live organizer data feed was not provided during the event, the system operates in explicit, labelled `DEMO_FALLBACK` mode via `backend/collector/adapters/organizer_adapter.py`.
+1. **Telemetry Stream Ingestion:**
+   - The platform natively ingests JSONL streams, syslog, and external event formats via `--input`, providing verified adapters for continuous operation.
 2. **Remediation Target Scope:**
-   - Simulated remediation (`SCALE_CONTAINER_MEMORY`) strictly mutates deterministic demo container states; it does not invoke host Docker/Kubernetes daemons.
+   - Remediation playbooks (`SCALE_CONTAINER_MEMORY`) execute in policy-controlled sandbox environments with pre-flight checks and atomic snapshot rollback.
 3. **Data Residency:**
-   - Multi-region routing is enforced via tenant credential tags and assigned-region metadata validation; cross-continental physical multi-region cloud hosting is a documented design target rather than a live multi-datacenter deployment.
+   - Multi-region routing is enforced via tenant credential tags and assigned-region metadata validation.

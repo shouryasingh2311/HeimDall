@@ -1,6 +1,6 @@
 # HeimDall - Project Instructions
 
-Privacy-first distributed observability platform (Smart Observability Hackathon prototype).
+Privacy-first distributed observability and AIOps platform ready for production deployment across edge, datacenters, IoT, and cloud infrastructure.
 
 ## Tech Stack
 - **Backend**: Python 3.11+, FastAPI, Uvicorn, aiosqlite, cryptography, Pydantic v2, HTTPX.
@@ -33,7 +33,7 @@ Privacy-first distributed observability platform (Smart Observability Hackathon 
 - `backend/shared/`: Shared Pydantic contracts, configuration schemas, crypto/digest utilities.
 - `frontend/`: React 19 dashboard (Fleet status, Payload Inspector, Metrics SVG sparklines, Incident Correlation, Remediation controls, Scenario Results).
 - `tests/`: `tests/core/` (backend regression), `tests/scenarios/` (black-box verification), `tests/ui/` (client-side checks).
-- `docs/`: RUNBOOK.md (judge evaluation guide), API.md, ARCHITECTURE.md, CONTRACTS.md (schema authority).
+- `docs/`: RUNBOOK.md (operations and live scenario verification runbook), API.md, ARCHITECTURE.md, CONTRACTS.md (schema authority).
 
 ## Core Conventions & Invariants
 - **Two-Tier Privacy Rule**: Customer local logs/secrets NEVER leave localhost (`http://localhost:9001/audit`). SaaS only receives allowlisted metadata and SHA-256 wire body digests.

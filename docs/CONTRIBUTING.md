@@ -12,7 +12,7 @@ Development proceeds across three bounded member workstreams to prevent merge co
 |---|---|---|---|
 | **M1: Lead / Core** | `feat/core-platform` | `backend/shared/**`, `backend/saas/**`, `backend/collector/**` (excl. adapters/demo), `pyproject.toml`, `scripts/security/**`, `tests/core/**`, `docs/CONTRACTS.md` | Core architecture, security sanitizer, SQLite outbox, SaaS APIs, AIOps engine, and integration. |
 | **M2: Operations Dashboard** | `feat/operations-dashboard` | `frontend/**`, `tests/ui/**` | React 19 / Vite UI, fleet views, egress receipt inspector, render timing instrumentation. |
-| **M3: Validation & Adapters** | `feat/fixtures-validation` | `backend/collector/adapters/**`, `backend/collector/demo_source.py`, `backend/collector/static/**`, `tests/scenarios/**`, `scripts/verification/**`, `docs/RUNBOOK.md` | Organizer stream adapter, local proof HTML, pure simulation source, 8-scenario verifiers. |
+| **M3: Validation & Adapters** | `feat/fixtures-validation` | `backend/collector/adapters/**`, `backend/collector/demo_source.py`, `backend/collector/static/**`, `tests/scenarios/**`, `scripts/verification/**`, `docs/RUNBOOK.md` | Ingestion stream adapter, local proof HTML, simulation source, 8-scenario resilience verifiers. |
 
 ### Branch Rules
 * Work only on your designated feature branch.
@@ -41,7 +41,7 @@ Before requesting review or merging, ensure all tests pass:
 # 1. Core backend and security tests
 python -m pytest tests/core
 
-# 2. 8 Hackathon scenario verifiers
+# 2. 8 Resilience and chaos scenario verifiers
 python -m pytest tests/scenarios
 
 # 3. Frontend TypeScript check and production build

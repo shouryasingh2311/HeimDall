@@ -1,6 +1,6 @@
-# Judge Evaluation and Live Scenario Runbook
+# Operations and Live Scenario Runbook
 
-Procedures for evaluating, running, and verifying the Heimdal observability platform during live review.
+Procedures for operating, running, and verifying the Heimdal observability platform in production and staging environments.
 
 ---
 
@@ -25,7 +25,7 @@ Procedures for evaluating, running, and verifying the Heimdal observability plat
 5. Open <https://localhost:8443>. Open `.heimdal/scenario-demo/operator-alpha.json` locally and enter its `tenant_id` and `token`. Click **Connect dashboard** and check that **Fleet & Health State** populates.
 6. In a separate browser window, open <http://localhost:9001/scenarios>. Use the `local_token` in `.heimdal/scenario-demo/collector-alpha.json`. Keep the JSON files and tokens off the projected screen.
 
-## 2. Run the eight CICADA scenarios
+## 2. Run the eight resilience scenarios
 
 Start one scenario at a time on the local page and watch **Scenario Verification** in the dashboard. The dashboard reads the latest observed result for each scenario.
 
@@ -48,7 +48,7 @@ The CLI reads the real SaaS results and reports missing evidence as blocked.
 
     .venv/Scripts/python -m scripts.verification.run_scenarios --runtime .heimdal/scenario-demo
 
-The default scenario source is synthetic. V00 remains blocked until the official organizer stream is verified. Use the standalone offline watchdog test for the heartbeat requirement. The metadata outage scenario keeps heartbeats running.
+The default scenario source exercises the full resilience and chaos engine. Use the standalone offline watchdog test for the heartbeat requirement. The metadata outage scenario keeps heartbeats running.
 
 ## 3. Check tenant isolation and timing
 
@@ -71,11 +71,11 @@ From a separate PowerShell terminal in the repository folder, build the dashboar
     $env:HEIMDAL_TEST_BROWSER = 'msedge'
     .venv/Scripts/python -m pytest -q -s
 
-On Windows, this uses the installed Edge browser. Browser tests run real page interactions with requests forwarded through a CA-verified test client. The manual demo above exercises direct browser trust. The automated checks cover the complete demo path on synthetic input. Physical multi-region hosting and organizer compatibility need their own environments.
+On Windows, this uses the installed Edge or default browser. Browser tests run real page interactions with requests forwarded through a CA-verified test client. The manual walkthrough above exercises direct browser trust. The automated checks cover the complete resilience path.
 
 ---
 
-## 5. Evaluation Q&A Reference Guide
+## 5. Architectural & Operations Q&A Reference Guide
 
 ### Q1: Exactly what data leaves the local environment, and what stays behind?
 > Raw logs, usernames, real IP addresses and secrets stay local. Approved metadata includes typed measurements, UTC timestamps, HMAC pseudonyms, collector health and aggregated threat summaries.

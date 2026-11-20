@@ -1,118 +1,62 @@
-import React from 'react';
-import type { ApiError } from '../api/client';
-import { IS_MOCK_FIXTURE_LABEL } from '../fixtures/metadataFixtures';
+import { useState } from 'react';
+import { apiClient, type ApiError } from '../api/client';
 
 interface ConnectionBannerProps {
   serverStatus: 'connected' | 'disconnected' | 'fixture';
   error: ApiError | null;
   lastSyncUtc: string | null;
-  tenantId: string;
   isFixtureMode: boolean;
   onToggleFixtureMode: (enabled: boolean) => void;
   onRefresh: () => void;
-  onOpenSettings: () => void;
+  onCredentialsChanged: () => void;
   isLoading: boolean;
 }
 
-export const ConnectionBanner: React.FC<ConnectionBannerProps> = ({
-  serverStatus,
-  error,
-  lastSyncUtc,
-  tenantId,
-  isFixtureMode,
-  onToggleFixtureMode,
-  onRefresh,
-  onOpenSettings,
-  isLoading,
-}) => {
+export function ConnectionBanner({
+  serverStatus, error, lastSyncUtc, isFixtureMode, onToggleFixtureMode,
+  onRefresh, onCredentialsChanged, isLoading,
+}: ConnectionBannerProps) {
+  const [credentialsOpen, setCredentialsOpen] = useState(true);
+  const status = isFixtureMode ? 'Synthetic fixtures' : isLoading && !lastSyncUtc && !error
+    ? 'Connecting' : serverStatus === 'connected' ? 'Live connection' : 'Disconnected';
+
   return (
-    <header className="heimdal-header">
-      <div className="header-top-row">
-        <div className="brand-section">
-          <span className="brand-badge">HEIMDAL</span>
-          <h1 className="system-title">Operations & Fleet Monitoring</h1>
-          <button
-            type="button"
-            className="tenant-tag-btn"
-            onClick={onOpenSettings}
-            title="Click to change operator credentials or tenant scope"
-          >
-            Tenant: {tenantId} &bull; Scope Settings
+    <section className="connection" aria-label="Data connection">
+      <div className="connection-bar">
+        <div className="connection-info">
+          <span className={`connection-state state-${serverStatus}`}><i aria-hidden="true" />{status}</span>
+          <span className="sync-time">{lastSyncUtc
+            ? `Last sync ${new Date(lastSyncUtc).toLocaleTimeString('en-GB', { timeZone: 'UTC' })} UTC`
+            : 'Awaiting first sync'}</span>
+        </div>
+        <div className="connection-actions">
+          <button className="text-btn" aria-expanded={credentialsOpen} aria-controls="credentials" onClick={() => setCredentialsOpen(!credentialsOpen)}>Credentials</button>
+          <button className="action-btn" onClick={() => { setCredentialsOpen(isFixtureMode); onToggleFixtureMode(!isFixtureMode); }}>
+            {isFixtureMode ? 'Switch to Live API' : 'Use Mock Fixtures'}
           </button>
-        </div>
-
-        <div className="status-controls">
-          {isFixtureMode ? (
-            <div className="fixture-badge-permanent" title="Displaying synthetic test metadata only">
-              [ {IS_MOCK_FIXTURE_LABEL} ]
-            </div>
-          ) : serverStatus === 'connected' ? (
-            <div className="live-status-pill status-live">
-              <span className="dot dot-live" />
-              LIVE SAAS INGEST (2.0s poll)
-            </div>
-          ) : (
-            <div className="live-status-pill status-offline">
-              <span className="dot dot-offline" />
-              DISCONNECTED
-            </div>
-          )}
-
-          <div className="action-buttons">
-            <button
-              type="button"
-              className="settings-btn"
-              onClick={onOpenSettings}
-              title="Configure operator token and tenant scope"
-            >
-              Auth / Scope
-            </button>
-            <button
-              type="button"
-              className={`mode-toggle-btn ${isFixtureMode ? 'active-fixture' : ''}`}
-              onClick={() => onToggleFixtureMode(!isFixtureMode)}
-              title="Switch between live API connection and verified metadata fixtures"
-            >
-              {isFixtureMode ? 'Switch to Live API' : 'Use Mock Fixtures'}
-            </button>
-            <button
-              type="button"
-              className="refresh-btn"
-              onClick={onRefresh}
-              disabled={isLoading}
-              title="Trigger immediate sync"
-            >
-              {isLoading ? 'Syncing...' : 'Sync Now'}
-            </button>
-          </div>
+          <button className="action-btn" onClick={onRefresh} disabled={isLoading}><span aria-hidden="true">↻ </span>{isLoading ? 'Syncing…' : 'Sync now'}</button>
         </div>
       </div>
-
-      {/* Disconnect/Error Callout: Never silently masked */}
       {!isFixtureMode && error && (
-        <div className="error-callout" role="alert">
-          <div className="error-title">Backend Connection Unreachable</div>
-          <div className="error-detail">
-            Status: {error.status === 0 ? 'Network Failure / Offline' : `${error.status} ${error.statusText}`} | Target: {error.endpoint}
-          </div>
-          <div className="error-hint">
-            The central SaaS API is not responding. Showing honest disconnected state without silent fallback.
-            You may switch to Mock Fixture mode above to test UI components.
-          </div>
-        </div>
+        <p className="connection-error" role="alert">
+          <strong>{error.status === 401 || error.status === 403 ? 'Authentication required.' : 'Fleet API unavailable.'}</strong>{' '}
+          {error.status ? `${error.status} ${error.statusText}` : 'Network request failed'} · <code>{error.endpoint}</code>
+          {lastSyncUtc && ' · Showing the last received readings.'}
+        </p>
       )}
-
-      {/* Two-Window Architecture Notice (Per Hackathon Privacy Contract) */}
-      <div className="two-tier-notice">
-        <span className="notice-label">Two-Tier Privacy Isolation:</span>
-        <span className="notice-text">
-          This SaaS dashboard displays aggregated metadata only. Raw logs and secrets never leave the collector boundary.
-          To view the local proof window, open <code>http://localhost:9001/audit</code> in a separate browser tab.
-        </span>
-        {lastSyncUtc && (
-          <span className="sync-timestamp">Last sync: {new Date(lastSyncUtc).toLocaleTimeString(undefined, { timeZone: 'UTC' })} UTC</span>
-        )}
-      </div>
-    </header>
+      {credentialsOpen && <form id="credentials" className="connection-form" onSubmit={(event) => {
+        event.preventDefault();
+        const form = new FormData(event.currentTarget);
+        const tenant = String(form.get('tenant') ?? '').trim();
+        const token = String(form.get('token') ?? '').trim();
+        if (!tenant || !token) return;
+        apiClient.setTenant(tenant, token);
+        onCredentialsChanged();
+      }}>
+        <label>Tenant ID<input name="tenant" className="input-text mono" required defaultValue={apiClient.getTenantId()} /></label>
+        <label>Operator token<input name="token" type="password" className="input-text" required autoComplete="off" placeholder="Enter operator token" /></label>
+        <button className="btn-action-primary">Connect dashboard</button>
+      </form>}
+    </section>
   );
-};
+}
