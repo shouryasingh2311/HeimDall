@@ -51,7 +51,10 @@ export function BenchmarkPanel() {
             </table>
           </div>
           <p>{data.offline.length ? `Latest offline detection: ${(data.offline[0].delay_ms / 1000).toFixed(2)} s.` : 'No offline detection recorded in this window.'}</p>
-          <p>{data.alert_delay_ms === null ? 'Alert timing pending Phase 5.' : `Alert delay: ${(data.alert_delay_ms / 1000).toFixed(2)} s.`}</p>
+          <p>{data.alert_delay_ms === null ? 'No valid alert timing samples in this window.'
+            : `Breach to persisted alert p95: ${(data.alert_delay_ms / 1000).toFixed(2)} s across ${data.alert_timing.samples} samples.`}
+            {data.alert_timing.clock_flagged > 0 && ` ${data.alert_timing.clock_flagged} clock flagged.`}
+          </p>
         </>
       ) : <p>Loading timing data…</p>}
     </section>

@@ -52,6 +52,7 @@ class ServerSettings(StrictModel):
     credentials: Annotated[list[Credential], Field(min_length=1)]
     dev_origin: Literal["http://localhost:5173", "http://127.0.0.1:5173"] | None = None
     health: HealthPolicy = Field(default_factory=HealthPolicy)
+    dependencies: dict[Identifier, dict[Pseudonym, list[Pseudonym]]] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def consistent_scope(self) -> "ServerSettings":
@@ -75,6 +76,12 @@ class ServerSettings(StrictModel):
                     if membership in source_owners:
                         raise ValueError("Duplicate source membership")
                     source_owners.add(membership)
+        for tenant, graph in self.dependencies.items():
+            for source, dependencies in graph.items():
+                if (tenant, source) not in source_owners or source in dependencies:
+                    raise ValueError("Invalid dependency source")
+                if any((tenant, dependency) not in source_owners for dependency in dependencies):
+                    raise ValueError("Dependency must belong to the same tenant")
         return self
 
 

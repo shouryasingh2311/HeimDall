@@ -19,6 +19,7 @@ from backend.collector.demo_source import DemoSource, RawEvent
 from backend.collector.drainer import DELIVERY_ERRORS, Drainer
 from backend.collector.inspector import AuditPreview, create_inspector
 from backend.collector.sanitizer import Sanitizer
+from backend.collector.security_analyzer import QueueFull, SecurityAnalyzer
 from backend.collector.transport import Transport
 from backend.shared.config import CollectorSettings, read_settings
 from backend.shared.models import CollectorHeartbeat, canonical_bytes, utc_now, utc_text
@@ -35,29 +36,46 @@ class Collector:
         self.drainer = Drainer(outbox, transport, audit)
         self.backpressure = False
         self.sanitizer = Sanitizer(settings)
+        self.security = SecurityAnalyzer(outbox.security_db, outbox.capacity, self.sanitizer)
         self.process = psutil.Process()
         self.process.cpu_percent()
 
     async def submit(self, event: RawEvent) -> bool:
         try:
-            payload = self.sanitizer.metric(event)
+            return await self.queue_event(event)
         except ValueError:
-            LOG.warning("Rejected local event with invalid identity or metrics")
+            LOG.warning("Rejected invalid local event")
             return False
-        if payload is None:
-            return True
-        approved = canonical_bytes(payload)
-        try:
-            while (state := await self.outbox.enqueue(payload, approved)) is None:
-                if not self.backpressure:
-                    LOG.warning("Outbox full; input is paused")
-                self.backpressure = True
-                await asyncio.sleep(0.25)
-            if self.audit.by_id(payload.payload_uuid, approved_body=approved.decode()) is None:
-                self.audit.add(event, payload, approved)["state"] = state
-            return state != "quarantined"
         finally:
             self.backpressure = False
+
+    async def queue_event(self, event: RawEvent) -> bool:
+        if event.kind == "auth":
+            observed_at = utc_now()
+            while True:
+                try:
+                    summary = await self.security.submit(event, observed_at)
+                    break
+                except QueueFull:
+                    await self.wait_for_capacity()
+            if summary is not None:
+                payload, body = summary
+                self.audit.add(event, payload, body)["state"] = "queued"
+            return True
+
+        payload = self.sanitizer.metric(event)
+        approved = canonical_bytes(payload)
+        while (state := await self.outbox.enqueue(payload, approved)) is None:
+            await self.wait_for_capacity()
+        if self.audit.by_id(payload.payload_uuid, approved_body=approved.decode()) is None:
+            self.audit.add(event, payload, approved)["state"] = state
+        return state != "quarantined"
+
+    async def wait_for_capacity(self):
+        if not self.backpressure:
+            LOG.warning("Outbox full; input is paused")
+        self.backpressure = True
+        await asyncio.sleep(0.25)
 
     async def queue_status(self):
         pending, quarantined = await self.outbox.counts()

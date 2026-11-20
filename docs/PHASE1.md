@@ -41,8 +41,10 @@ For the privacy demo, start the alpha collector with --input tests/scenarios/fix
 
 ## Verification
 
+Phase 5 dependency correlation uses the graph in `saas.json`. Bootstrap a new runtime directory for the demo if your existing runtime was created before this graph was added. Run the SaaS and collector with the same `--runtime` path. Confirm incident behavior against the live test with `.venv/Scripts/python -m pytest -q -s tests/core/test_phase5.py`. These checks use synthetic input and temporary credentials.
+
     .venv/Scripts/python -m pytest -q
 
 Phase 1 tests exercise actual collector and SaaS processes with temporary certificates and databases. Set CICADA_TEST_DASHBOARD to a built dashboard directory to also verify the receipt renders in a browser. Set CICADA_TEST_BROWSER to msedge or use a Playwright-installed Chromium.
 
-V00 still needs an actual organizer sample. V02 covers the implemented collector/operator routes. Action and subscription checks apply once those capabilities exist. Full health is Phase 4 and local auth aggregation is Phase 5.
+V00 still needs an actual organizer sample. V02 covers the implemented collector/operator routes. Action and subscription checks apply once those capabilities exist.

@@ -69,6 +69,8 @@ Fleet source: source_id, collector_id, health (Excellent/Good/Fair/Poor), reason
 IncidentDetail: incident_id, severity, status (open/recovering/resolved), template title, source_ids, alert_ids, likely_cause, evidence_score, score_method, contributing_signals, reasoning_steps, recommended_action, proposal_status.
 Signal: payload_uuid, source_id, metric, observed, baseline_mean, baseline_std, z_score, event_time_utc; missing stats are null. Explanations cite only signals/configured dependencies.
 
+Phase 5 groups fresh infrastructure alerts by configured tenant dependency group and a 60-second event-time window. Fresh auth failures count locally per source and origin within 10 seconds. The typed auth summary uses a separate incident category. Infrastructure incidents recover after five consecutive normal samples per affected source for every affected metric. A new grouped alert resets recovery. Security incidents stay open pending a verified recovery signal.
+
 ActionProposal: action_id, incident_id, target_source_id, playbook=SCALE_CONTAINER_MEMORY, factor=1.5, simulation=true, policy_verdict, reason_code, status.
 Lifecycle: proposed -> approved -> executing -> succeeded/failed; succeeded -> rollback_pending -> rolled_back/rollback_failed. Duplicate approvals/rollbacks return existing state. Require operator role. One active action/target; maximum three NEW actions/hour/tenant/target; rollback excluded from quota. Local snapshot and command receipt persisted with demo state. No real-source execution.
 
