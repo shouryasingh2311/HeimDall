@@ -12,34 +12,39 @@ export const TransitionsView: React.FC<TransitionsViewProps> = ({ isFixtureMode 
     isFixtureMode ? MOCK_TRANSITIONS_RESPONSE.items : [],
   );
   const [loading, setLoading] = useState<boolean>(false);
+  const [unavailable, setUnavailable] = useState(false);
 
   useEffect(() => {
     if (isFixtureMode) {
       setTransitions(MOCK_TRANSITIONS_RESPONSE.items);
+      setUnavailable(false);
       return;
     }
 
     let active = true;
+    let timer: number | undefined;
+    setLoading(true);
     const fetchTransitions = async () => {
-      setLoading(true);
       try {
         const res = await apiClient.getTransitions();
         if (active) {
           setTransitions(res.items);
+          setUnavailable(false);
         }
       } catch {
-        // Honest error state: empty transitions if failed
-        if (active) {
-          setTransitions([]);
-        }
+        if (active) setUnavailable(true);
       } finally {
-        if (active) setLoading(false);
+        if (active) {
+          setLoading(false);
+          timer = window.setTimeout(fetchTransitions, 2000);
+        }
       }
     };
 
     fetchTransitions();
     return () => {
       active = false;
+      window.clearTimeout(timer);
     };
   }, [isFixtureMode]);
 
@@ -50,7 +55,9 @@ export const TransitionsView: React.FC<TransitionsViewProps> = ({ isFixtureMode 
         <span className="count-tag">{transitions.length} Recorded Transitions</span>
       </div>
 
-      {loading && transitions.length === 0 ? (
+      {unavailable ? (
+        <div className="empty-text">Transition history is unavailable.</div>
+      ) : loading && transitions.length === 0 ? (
         <div className="loading-text">Loading state transition history...</div>
       ) : transitions.length === 0 ? (
         <div className="empty-text">No state transitions recorded in this observation window.</div>

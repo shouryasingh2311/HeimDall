@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import type { FleetResponse, FleetSource, HealthState } from '../types/contracts';
 import { apiClient } from '../api/client';
 import { SourceMetricsModal } from './SourceMetricsModal';
@@ -31,20 +31,39 @@ export const FleetOverview: React.FC<FleetOverviewProps> = ({
   isFixtureMode,
   onInspectPayload,
 }) => {
-  const hasInstrumentedFirstRender = useRef(false);
-  const [selectedSource, setSelectedSource] = useState<FleetSource | null>(null);
+  const fleet = useRef<HTMLDivElement>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const closeTrends = useCallback(() => setSelectedId(null), []);
+  const selectedSource: FleetSource | null = data?.sources.find((src) => src.source_id === selectedId) ?? null;
 
-  // Capture first visible rendering of source IDs and send to benchmark API
   useEffect(() => {
-    if (data && data.sources.length > 0 && !hasInstrumentedFirstRender.current) {
-      hasInstrumentedFirstRender.current = true;
-      requestAnimationFrame(() => {
-        for (const src of data.sources) {
-          apiClient.recordFirstRender(src.source_id);
-        }
-      });
-    }
-  }, [data]);
+    if (!fleet.current || !data || isFixtureMode || selectedId) return;
+    const frameIds = new Set<number>();
+    const observer = new IntersectionObserver((entries) => {
+      for (const { isIntersecting, target } of entries) {
+        const uuid = (target as HTMLElement).dataset.payloadUuid;
+        if (!isIntersecting || !uuid || document.visibilityState !== 'visible') continue;
+        const first = requestAnimationFrame(() => {
+          frameIds.delete(first);
+          const second = requestAnimationFrame(() => {
+            frameIds.delete(second);
+            const rect = target.getBoundingClientRect();
+            if (target.isConnected && (target as HTMLElement).dataset.payloadUuid === uuid
+                && rect.bottom > 0 && rect.top < window.innerHeight && document.visibilityState === 'visible') {
+              void apiClient.recordFirstRender(uuid);
+            }
+          });
+          frameIds.add(second);
+        });
+        frameIds.add(first);
+      }
+    });
+    fleet.current.querySelectorAll('[data-payload-uuid]').forEach((row) => observer.observe(row));
+    return () => {
+      observer.disconnect();
+      frameIds.forEach((id) => cancelAnimationFrame(id));
+    };
+  }, [data, isFixtureMode, selectedId]);
 
   if (isLoading && !data) {
     return (
@@ -66,7 +85,7 @@ export const FleetOverview: React.FC<FleetOverviewProps> = ({
   }
 
   return (
-    <div className="fleet-container">
+    <div className="fleet-container" ref={fleet}>
       {/* Collectors Section */}
       <section className="section-block">
         <div className="section-header">
@@ -79,6 +98,7 @@ export const FleetOverview: React.FC<FleetOverviewProps> = ({
             <thead>
               <tr>
                 <th>Collector ID</th>
+                <th>Version</th>
                 <th>Health State</th>
                 <th>Queue Depth</th>
                 <th>CPU %</th>
@@ -92,6 +112,7 @@ export const FleetOverview: React.FC<FleetOverviewProps> = ({
               {data.collectors.map((col) => (
                 <tr key={col.collector_id}>
                   <td className="mono font-semibold">{col.collector_id}</td>
+                  <td>{col.version}</td>
                   <td>
                     <span className={`health-badge ${getHealthBadgeClass(col.health)}`}>
                       {col.health}
@@ -110,7 +131,7 @@ export const FleetOverview: React.FC<FleetOverviewProps> = ({
                     </span>
                   </td>
                   <td className="mono text-muted text-sm">
-                    {new Date(col.last_heartbeat_utc).toLocaleTimeString()} UTC
+                    {new Date(col.last_heartbeat_utc).toLocaleTimeString(undefined, { timeZone: 'UTC' })} UTC
                   </td>
                   <td>
                     <div className="reason-chips">
@@ -145,6 +166,7 @@ export const FleetOverview: React.FC<FleetOverviewProps> = ({
                 <th>Latency</th>
                 <th>Loss</th>
                 <th>Service Avail.</th>
+                <th>Connectivity</th>
                 <th>Latest Event</th>
                 <th>Active Reasons</th>
                 <th>Action</th>
@@ -152,7 +174,7 @@ export const FleetOverview: React.FC<FleetOverviewProps> = ({
             </thead>
             <tbody>
               {data.sources.map((src) => (
-                <tr key={src.source_id}>
+                <tr key={src.source_id} data-payload-uuid={src.payload_uuid}>
                   <td className="mono font-semibold">{src.source_id}</td>
                   <td className="mono text-muted text-sm">{src.collector_id}</td>
                   <td>
@@ -165,12 +187,13 @@ export const FleetOverview: React.FC<FleetOverviewProps> = ({
                   <td>{src.metrics.latency_ms !== null ? `${src.metrics.latency_ms.toFixed(1)} ms` : '—'}</td>
                   <td>{src.metrics.packet_loss_pct !== null ? `${src.metrics.packet_loss_pct.toFixed(1)}%` : '—'}</td>
                   <td>
-                    <span className={`status-tag ${src.metrics.service_available ? 'tag-valid' : 'tag-alert'}`}>
-                      {src.metrics.service_available ? 'NOMINAL' : 'DEGRADED'}
+                    <span className={`status-tag ${src.metrics.service_available === false ? 'tag-alert' : ''}`}>
+                      {src.metrics.service_available === null ? '—' : src.metrics.service_available ? 'NOMINAL' : 'DEGRADED'}
                     </span>
                   </td>
+                  <td>{src.metrics.connectivity === null ? '—' : src.metrics.connectivity ? 'Up' : 'Down'}</td>
                   <td className="mono text-muted text-sm">
-                    {new Date(src.latest_event_time_utc).toLocaleTimeString()} UTC
+                    {new Date(src.latest_event_time_utc).toLocaleTimeString(undefined, { timeZone: 'UTC' })} UTC
                   </td>
                   <td>
                     <div className="reason-chips">
@@ -183,7 +206,7 @@ export const FleetOverview: React.FC<FleetOverviewProps> = ({
                     <button
                       type="button"
                       className="action-btn text-xs"
-                      onClick={() => setSelectedSource(src)}
+                      onClick={() => setSelectedId(src.source_id)}
                     >
                       View Trends
                     </button>
@@ -198,7 +221,7 @@ export const FleetOverview: React.FC<FleetOverviewProps> = ({
       {/* Phase 4 Source Metrics Modal */}
       <SourceMetricsModal
         source={selectedSource}
-        onClose={() => setSelectedSource(null)}
+        onClose={closeTrends}
         isFixtureMode={isFixtureMode}
         onInspectPayload={onInspectPayload}
       />

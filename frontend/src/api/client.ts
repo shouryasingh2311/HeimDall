@@ -55,7 +55,11 @@ export class CicadaApiClient {
       tenantId: initialConfig?.tenantId || 'tenant-alpha',
       operatorToken: initialConfig?.operatorToken || '',
     };
-    this.sessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    this.sessionId = this.newSession();
+  }
+
+  private newSession(): string {
+    return `session-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
   }
 
   /**
@@ -67,6 +71,7 @@ export class CicadaApiClient {
       this.config.operatorToken = operatorToken;
     }
     this.renderedPayloadKeys.clear();
+    this.sessionId = this.newSession();
     this.abortAllRequests();
   }
 
@@ -75,6 +80,7 @@ export class CicadaApiClient {
     if (newConfig.tenantId !== undefined) this.config.tenantId = newConfig.tenantId;
     if (newConfig.operatorToken !== undefined) this.config.operatorToken = newConfig.operatorToken;
     this.renderedPayloadKeys.clear();
+    this.sessionId = this.newSession();
     this.abortAllRequests();
   }
 
@@ -180,10 +186,12 @@ export class CicadaApiClient {
     sourceId: string,
     limit = 50,
     cursor?: string,
+    recent = false,
   ): Promise<{ items: PayloadDetail[]; next_cursor: string | null }> {
     const params = new URLSearchParams();
     params.set('limit', String(limit));
     if (cursor) params.set('cursor', cursor);
+    if (recent) params.set('recent', 'true');
     return this.request<{ items: PayloadDetail[]; next_cursor: string | null }>(
       `/api/v1/sources/${encodeURIComponent(sourceId)}/metrics?${params.toString()}`,
       { method: 'GET' },
@@ -194,6 +202,12 @@ export class CicadaApiClient {
   public async getTransitions(cursor?: string): Promise<TransitionsResponse> {
     const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';
     return this.request<TransitionsResponse>(`/api/v1/transitions${query}`, { method: 'GET' }, 'transitions');
+  }
+
+  public async getBenchmarks(): Promise<BenchmarkSummary> {
+    return this.request<BenchmarkSummary>(
+      `/api/v1/benchmarks?session_id=${encodeURIComponent(this.sessionId)}`,
+    );
   }
 
   public async getIncidents(): Promise<IncidentSummary[]> {
@@ -230,20 +244,17 @@ export class CicadaApiClient {
     return this.request<ScenarioResult[]>('/api/v1/scenario-results', { method: 'GET' }, 'scenarios');
   }
 
-  public async getBenchmarks(): Promise<BenchmarkSummary> {
-    return this.request<BenchmarkSummary>('/api/v1/benchmarks', { method: 'GET' }, 'benchmarks');
-  }
-
   /**
    * First visible render instrumentation.
    * Deduplicates by payload_uuid per session so it is only posted once.
    */
   public async recordFirstRender(payloadUuid: string, runId = 'default-run'): Promise<boolean> {
-    if (!payloadUuid || this.renderedPayloadKeys.has(payloadUuid)) {
+    const key = `${runId}/${payloadUuid}`;
+    if (!payloadUuid || this.renderedPayloadKeys.has(key)) {
       return false; // Already submitted once in this session
     }
 
-    this.renderedPayloadKeys.add(payloadUuid);
+    this.renderedPayloadKeys.add(key);
 
     const payload: BenchmarkRenderPayload = {
       run_id: runId,
@@ -256,7 +267,7 @@ export class CicadaApiClient {
       await this.request<BenchmarkRenderResponse>('/api/v1/benchmarks/render', {
         method: 'POST',
         body: JSON.stringify(payload),
-      });
+      }, key);
       return true;
     } catch {
       // Benchmark timing errors are recorded locally but never break the UI

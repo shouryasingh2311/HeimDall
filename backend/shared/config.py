@@ -5,7 +5,7 @@ from typing import Annotated, Literal, TypeVar
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 
-from backend.shared.models import Identifier, Pseudonym, StrictModel
+from backend.shared.models import Identifier, Metrics, Pseudonym, StrictModel
 
 TokenDigest = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
 Model = TypeVar("Model", bound=StrictModel)
@@ -28,9 +28,30 @@ class Credential(StrictModel):
         return self
 
 
+class HealthPolicy(StrictModel):
+    cpu: list[float] = Field(default_factory=lambda: [70., 85., 95.])
+    memory: list[float] = Field(default_factory=lambda: [70., 85., 95.])
+    disk: list[float] = Field(default_factory=lambda: [75., 90., 98.])
+    latency: list[float] = Field(default_factory=lambda: [50., 120., 500.])
+    packet_loss: list[float] = Field(default_factory=lambda: [0., 2., 10.])
+    risk: list[float] = Field(default_factory=lambda: [50., 90.])
+    expected_signals: dict[Pseudonym, list[str]] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_rules(self):
+        for name in ("cpu", "memory", "disk", "latency", "packet_loss", "risk"):
+            values = getattr(self, name)
+            if len(values) != (2 if name == "risk" else 3) or values != sorted(set(values)) or values[0] < 0:
+                raise ValueError("Expected strictly increasing health thresholds")
+        if any(set(fields) - Metrics.model_fields.keys() for fields in self.expected_signals.values()):
+            raise ValueError("Unknown expected metric")
+        return self
+
+
 class ServerSettings(StrictModel):
     credentials: Annotated[list[Credential], Field(min_length=1)]
     dev_origin: Literal["http://localhost:5173", "http://127.0.0.1:5173"] | None = None
+    health: HealthPolicy = Field(default_factory=HealthPolicy)
 
     @model_validator(mode="after")
     def consistent_scope(self) -> "ServerSettings":

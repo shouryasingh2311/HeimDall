@@ -1,9 +1,10 @@
 """Central metadata-only API and optional dashboard static server."""
 
 import argparse
+import asyncio
 import base64
 import binascii
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 import json
 import os
 from pathlib import Path
@@ -18,10 +19,12 @@ from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 from backend.saas.auth import Authenticator
+from backend.saas import benchmark
+from backend.saas.health import HealthMonitor
 from backend.saas.storage import PayloadConflict, Storage
 from backend.shared.config import Credential, ServerSettings, read_settings
 from backend.shared.models import (
-    CollectorHeartbeat, IngestReceipt, MetadataPayload, PayloadDetail, UuidString,
+    CollectorHeartbeat, Identifier, IngestReceipt, MetadataPayload, PayloadDetail, UuidString,
     parse_utc, utc_now, utc_text,
 )
 
@@ -85,7 +88,15 @@ def create_app(settings: ServerSettings, db_path: Path, dashboard: Path | None =
     async def lifespan(app: FastAPI):
         async with Storage.open(db_path) as storage:
             app.state.storage = storage
-            yield
+            app.state.monitor = HealthMonitor(storage, settings.health, sources_by_tenant)
+            storage.on_change = app.state.monitor.refresh_locked
+            watchdog = asyncio.create_task(app.state.monitor.watch())
+            try:
+                yield
+            finally:
+                watchdog.cancel()
+                with suppress(asyncio.CancelledError):
+                    await watchdog
 
     app = FastAPI(
         title="Cicada Metadata API", version="0.1.0", lifespan=lifespan,
@@ -166,9 +177,15 @@ def create_app(settings: ServerSettings, db_path: Path, dashboard: Path | None =
         source_id: str, credential: Credential = Depends(operator), storage: Storage = Depends(store),
         limit: Annotated[int, Query(ge=1, le=200)] = 50,
         cursor: Annotated[str | None, Query(max_length=256)] = None,
+        recent: bool = False,
     ):
         if source_id not in sources_by_tenant[credential.tenant_id]:
             raise HTTPException(404, "Source not found")
+        if recent:
+            if cursor is not None:
+                raise HTTPException(400, "Recent snapshots do not accept a cursor")
+            rows = await storage.recent_metrics(credential.tenant_id, source_id, limit)
+            return {"items": [storage.detail(row) for row in rows], "next_cursor": None}
         rows = await storage.metrics(credential.tenant_id, source_id, decode_cursor(cursor), limit + 1)
         items = rows[:limit]
         next_cursor = None
@@ -179,30 +196,34 @@ def create_app(settings: ServerSettings, db_path: Path, dashboard: Path | None =
         return {"items": [storage.detail(row) for row in items], "next_cursor": next_cursor}
 
     @app.get("/api/v1/fleet")
-    async def fleet(credential: Credential = Depends(operator), storage: Storage = Depends(store)):
-        beats, metrics = await storage.fleet(credential.tenant_id)
-        now = utc_now()
-        collectors = []
-        for row in beats:
-            beat = CollectorHeartbeat.model_validate_json(row["body"])
-            offline = (now - parse_utc(row["generated_at"])).total_seconds() >= 55
-            collectors.append({
-                "collector_id": beat.collector_id, "health": "Poor" if offline else "Fair",
-                "reasons": ["heartbeat_expired" if offline else "health_evaluator_pending"],
-                "last_heartbeat_utc": row["generated_at"], "version": beat.version,
-                "rss_mb": beat.rss_mb, "cpu_pct": beat.cpu_pct, "queue_depth": beat.queue_depth,
-                "config_status": beat.config_status,
-            })
-        sources = []
-        for row in metrics:
-            data = storage.detail(row)
-            sources.append({
-                "source_id": data.source_id, "collector_id": data.collector_id, "health": "Fair",
-                "reason_codes": ["health_evaluator_pending"], "latest_event_time_utc": data.event_time_utc,
-                "last_received_at_utc": data.received_at_utc, "metrics": data.metrics,
-                "payload_uuid": data.payload_uuid,
-            })
-        return {"collectors": collectors, "sources": sources, "server_time_utc": utc_text(now)}
+    async def fleet(request: Request, credential: Credential = Depends(operator)):
+        return await request.app.state.monitor.snapshot(credential.tenant_id)
+
+    @app.get("/api/v1/transitions")
+    async def transitions(
+        request: Request, credential: Credential = Depends(operator),
+        cursor: Annotated[int, Query(ge=1, le=2**63 - 1)] = 2**63 - 1,
+        limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    ):
+        return await request.app.state.monitor.transitions(credential.tenant_id, cursor, limit)
+
+    @app.post("/api/v1/benchmarks/render")
+    async def record_render(
+        receipt: benchmark.RenderReceipt, credential: Credential = Depends(operator),
+        storage: Storage = Depends(store),
+    ):
+        result = await benchmark.record(storage, credential.tenant_id, receipt)
+        if result is None:
+            raise HTTPException(404, "Payload not found")
+        return {"accepted": True, "first_recorded": result}
+
+    @app.get("/api/v1/benchmarks")
+    async def benchmarks(
+        credential: Credential = Depends(operator), storage: Storage = Depends(store),
+        run_id: Identifier = "default-run", session_id: Identifier | None = None,
+    ):
+        return await benchmark.summary(storage, credential.tenant_id, run_id, session_id)
+
 
     if dashboard is not None:
         index = dashboard / "index.html"

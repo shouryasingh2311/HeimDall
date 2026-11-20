@@ -19,9 +19,11 @@ export const SourceMetricsModal: React.FC<SourceMetricsModalProps> = ({
   const [history, setHistory] = useState<PayloadDetail[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const sourceId = source?.source_id;
+  const latestUuid = source?.payload_uuid;
 
   useEffect(() => {
-    if (!source) return;
+    if (!sourceId) return;
 
     // Keyboard listener for Escape key to close modal
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -30,7 +32,8 @@ export const SourceMetricsModal: React.FC<SourceMetricsModalProps> = ({
     window.addEventListener('keydown', handleKeyDown);
 
     if (isFixtureMode) {
-      const mockPoints = MOCK_SOURCE_METRICS_STORE[source.source_id] || [];
+      setError(null);
+      const mockPoints = MOCK_SOURCE_METRICS_STORE[sourceId] || [];
       // Strictly sort by event_time_utc ascending per Phase 4 / CONTRACTS.md
       const sorted = [...mockPoints].sort(
         (a, b) => new Date(a.event_time_utc).getTime() - new Date(b.event_time_utc).getTime(),
@@ -45,7 +48,7 @@ export const SourceMetricsModal: React.FC<SourceMetricsModalProps> = ({
       setLoading(true);
       setError(null);
       try {
-        const res = await apiClient.getSourceMetrics(source.source_id);
+        const res = await apiClient.getSourceMetrics(sourceId, 50, undefined, true);
         if (active) {
           // Strictly sort by event_time_utc ascending per Phase 4 / CONTRACTS.md
           const sorted = [...res.items].sort(
@@ -67,18 +70,18 @@ export const SourceMetricsModal: React.FC<SourceMetricsModalProps> = ({
       active = false;
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [source, isFixtureMode, onClose]);
+  }, [sourceId, latestUuid, isFixtureMode, onClose]);
 
   if (!source) return null;
 
   // Pure SVG sparkline generator (0..100% scale)
   const renderSparkline = (
-    values: number[],
+    values: (number | null)[],
     minVal = 0,
     maxVal = 100,
     strokeColor = '#3b82f6',
   ) => {
-    if (values.length < 2) {
+    if (values.filter((value) => value !== null).length < 2) {
       return <div className="text-xs text-muted">Insufficient historical points</div>;
     }
     const width = 280;
@@ -88,30 +91,34 @@ export const SourceMetricsModal: React.FC<SourceMetricsModalProps> = ({
     const plotHeight = height - padding * 2;
 
     const range = maxVal - minVal || 1;
+    const times = history.map((point) => Date.parse(point.event_time_utc));
+    const duration = (times.at(-1) ?? times[0]) - times[0];
     const points = values.map((val, idx) => {
-      const x = padding + (idx / (values.length - 1)) * plotWidth;
+      if (val === null) return null;
+      const fraction = duration > 0 ? (times[idx] - times[0]) / duration : idx / (values.length - 1);
+      const x = padding + fraction * plotWidth;
       const normalized = Math.max(0, Math.min(1, (val - minVal) / range));
       const y = height - padding - normalized * plotHeight;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
+      return [x, y];
     });
 
-    const pathData = `M ${points.join(' L ')}`;
+    const pathData = points.map((point, idx) => (
+      point ? `${points[idx - 1] ? 'L' : 'M'} ${point.join(',')}` : ''
+    )).join(' ');
 
     return (
       <svg className="sparkline-svg" width={width} height={height} aria-hidden="true">
         <path d={pathData} fill="none" stroke={strokeColor} strokeWidth="2" strokeLinecap="round" />
-        {points.map((pt, i) => {
-          const [cx, cy] = pt.split(',');
-          return <circle key={i} cx={cx} cy={cy} r="3" fill={strokeColor} />;
-        })}
+        {points.map((point, i) => point && <circle key={i} cx={point[0]} cy={point[1]} r="3" fill={strokeColor} />)}
       </svg>
     );
   };
 
-  const cpuPoints = history.map((h) => h.metrics?.cpu_pct ?? 0);
-  const memPoints = history.map((h) => h.metrics?.memory_pct ?? 0);
-  const latPoints = history.map((h) => h.metrics?.latency_ms ?? 0);
-  const maxLat = Math.max(100, ...latPoints);
+  const cpuPoints = history.map((h) => h.metrics?.cpu_pct ?? null);
+  const memPoints = history.map((h) => h.metrics?.memory_pct ?? null);
+  const latPoints = history.map((h) => h.metrics?.latency_ms ?? null);
+  const maxLat = Math.max(100, ...latPoints.filter((value) => value !== null));
+  const format = (value: number | null | undefined, unit: string) => value == null ? '—' : `${value.toFixed(1)}${unit}`;
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="source-modal-title">
@@ -194,6 +201,8 @@ export const SourceMetricsModal: React.FC<SourceMetricsModalProps> = ({
                     <th>Disk %</th>
                     <th>Latency</th>
                     <th>Loss</th>
+                    <th>Disk Read / Write</th>
+                    <th>Network TX / RX</th>
                     <th>Receipt Digest</th>
                     <th>Action</th>
                   </tr>
@@ -201,12 +210,14 @@ export const SourceMetricsModal: React.FC<SourceMetricsModalProps> = ({
                 <tbody>
                   {history.map((pt) => (
                     <tr key={pt.payload_uuid}>
-                      <td className="mono text-xs">{new Date(pt.event_time_utc).toLocaleTimeString()} UTC</td>
-                      <td>{pt.metrics?.cpu_pct !== null ? `${pt.metrics?.cpu_pct.toFixed(1)}%` : '—'}</td>
-                      <td>{pt.metrics?.memory_pct !== null ? `${pt.metrics?.memory_pct.toFixed(1)}%` : '—'}</td>
-                      <td>{pt.metrics?.disk_used_pct !== null ? `${pt.metrics?.disk_used_pct.toFixed(1)}%` : '—'}</td>
-                      <td>{pt.metrics?.latency_ms !== null ? `${pt.metrics?.latency_ms.toFixed(1)} ms` : '—'}</td>
-                      <td>{pt.metrics?.packet_loss_pct !== null ? `${pt.metrics?.packet_loss_pct.toFixed(1)}%` : '—'}</td>
+                      <td className="mono text-xs">{new Date(pt.event_time_utc).toLocaleTimeString(undefined, { timeZone: 'UTC' })} UTC</td>
+                      <td>{format(pt.metrics?.cpu_pct, '%')}</td>
+                      <td>{format(pt.metrics?.memory_pct, '%')}</td>
+                      <td>{format(pt.metrics?.disk_used_pct, '%')}</td>
+                      <td>{format(pt.metrics?.latency_ms, ' ms')}</td>
+                      <td>{format(pt.metrics?.packet_loss_pct, '%')}</td>
+                      <td>{format(pt.metrics?.disk_read_bps, ' B/s')} / {format(pt.metrics?.disk_write_bps, ' B/s')}</td>
+                      <td>{format(pt.metrics?.net_tx_bps, ' B/s')} / {format(pt.metrics?.net_rx_bps, ' B/s')}</td>
                       <td className="mono text-xs text-muted" title={pt.body_sha256}>
                         {pt.body_sha256.substring(0, 12)}...
                       </td>

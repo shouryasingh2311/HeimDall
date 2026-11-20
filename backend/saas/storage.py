@@ -1,12 +1,17 @@
 """Serialized SQLite persistence for metadata and collector heartbeats."""
 
 import asyncio
+from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 from datetime import timedelta
 import hashlib
+import json
 from pathlib import Path
 
 import aiosqlite
+
+from backend.saas.health import SCHEMA as HEALTH_SCHEMA
+from backend.saas.benchmark import SCHEMA as BENCHMARK_SCHEMA
 
 from backend.shared.models import (
     CollectorHeartbeat, IngestReceipt, MetadataPayload, PayloadDetail, canonical_bytes,
@@ -28,6 +33,9 @@ CREATE TABLE IF NOT EXISTS metadata (
 );
 CREATE INDEX IF NOT EXISTS metadata_source_time
 ON metadata (tenant_id, source_id, event_type, event_time, payload_uuid);
+CREATE INDEX IF NOT EXISTS metadata_live_time
+ON metadata (tenant_id, source_id, event_type, event_time)
+WHERE analysis_status != 'historical';
 CREATE TABLE IF NOT EXISTS heartbeat (
     tenant_id TEXT NOT NULL,
     collector_id TEXT NOT NULL,
@@ -55,6 +63,7 @@ class Storage:
     def __init__(self, db: aiosqlite.Connection):
         self.db = db
         self.lock = asyncio.Lock()
+        self.on_change: Callable[[str], Awaitable[dict]] | None = None
 
     @classmethod
     @asynccontextmanager
@@ -65,14 +74,14 @@ class Storage:
             await db.execute("PRAGMA journal_mode=WAL")
             await db.execute("PRAGMA synchronous=FULL")
             await db.execute("PRAGMA foreign_keys=ON")
-            await db.executescript(SCHEMA)
+            await db.executescript(SCHEMA + HEALTH_SCHEMA + BENCHMARK_SCHEMA)
             yield cls(db)
 
     @asynccontextmanager
     async def write(self):
         async with self.lock:
-            await self.db.execute("BEGIN IMMEDIATE")
             try:
+                await self.db.execute("BEGIN IMMEDIATE")
                 yield
                 await self.db.commit()
             except BaseException:
@@ -99,8 +108,9 @@ class Storage:
                     analysis_status=row["analysis_status"],
                 )
             latest = await self.db.execute_fetchall(
-                "SELECT max(event_time) AS latest FROM metadata WHERE tenant_id=? AND source_id=?",
-                (payload.tenant_id, payload.source_id),
+                """SELECT max(event_time) AS latest FROM metadata
+                   WHERE tenant_id=? AND source_id=? AND event_type=?""",
+                (payload.tenant_id, payload.source_id, payload.event_type),
             )
             newest = latest[0]["latest"]
             analysis_status = (
@@ -116,6 +126,8 @@ class Storage:
                 (*identity, payload.source_id, event_time, received_at, digest,
                  canonical_bytes(payload), payload.event_type, analysis_status),
             )
+            if self.on_change:
+                await self.on_change(payload.tenant_id)
             return IngestReceipt(
                 payload_uuid=payload.payload_uuid, status="accepted", body_sha256=digest,
                 received_at_utc=received_at, analysis_status=analysis_status,
@@ -140,7 +152,10 @@ class Storage:
                    WHERE excluded.generated_at > heartbeat.generated_at""",
                 (beat.tenant_id, beat.collector_id, generated, now, canonical_bytes(beat)),
             )
-            return cursor.rowcount == 1
+            refreshed = cursor.rowcount == 1
+            if refreshed and self.on_change:
+                await self.on_change(beat.tenant_id)
+            return refreshed
 
     @staticmethod
     def detail(row: aiosqlite.Row) -> PayloadDetail:
@@ -165,18 +180,32 @@ class Storage:
                 (tenant, source, *after, limit),
             )
 
-    async def fleet(self, tenant: str):
+    async def recent_metrics(self, tenant: str, source: str, limit: int):
         async with self.lock:
-            beats = await self.db.execute_fetchall(
-                "SELECT * FROM heartbeat WHERE tenant_id=? ORDER BY collector_id", (tenant,)
+            rows = await self.db.execute_fetchall(
+                """SELECT * FROM metadata WHERE tenant_id=? AND source_id=? AND event_type='metric'
+                   ORDER BY event_time DESC, payload_uuid DESC LIMIT ?""", (tenant, source, limit),
             )
-            metrics = await self.db.execute_fetchall(
-                """SELECT * FROM metadata AS point WHERE tenant_id=? AND event_type='metric'
-                   AND payload_uuid=(SELECT payload_uuid FROM metadata
-                       WHERE tenant_id=point.tenant_id AND source_id=point.source_id AND event_type='metric'
-                       ORDER BY event_time DESC, (analysis_status = 'historical'),
-                                received_at, payload_uuid LIMIT 1)
-                   ORDER BY source_id""",
-                (tenant,),
-            )
-        return beats, metrics
+        return rows[::-1]
+
+    async def fleet_rows(self, tenant: str, sources: set[str]):
+        """Read under the caller's health snapshot transaction."""
+        beats = await self.db.execute_fetchall(
+            "SELECT * FROM heartbeat WHERE tenant_id=? ORDER BY collector_id", (tenant,)
+        )
+        latest = await self.db.execute_fetchall(
+            """WITH kinds(kind) AS (VALUES ('metric'), ('auth_threat'))
+               SELECT point.* FROM json_each(?) AS source CROSS JOIN kinds
+               JOIN metadata AS point ON point.tenant_id=? AND point.payload_uuid=coalesce(
+                   (SELECT payload_uuid FROM metadata WHERE tenant_id=?
+                    AND source_id=source.value AND event_type=kinds.kind AND analysis_status!='historical'
+                    ORDER BY event_time DESC LIMIT 1),
+                   (SELECT payload_uuid FROM metadata WHERE tenant_id=?
+                    AND source_id=source.value AND event_type=kinds.kind AND kinds.kind='metric'
+                    ORDER BY event_time DESC, received_at, payload_uuid LIMIT 1)
+               ) ORDER BY point.source_id""", (json.dumps(sorted(sources)), tenant, tenant, tenant),
+        )
+        return (
+            beats, [row for row in latest if row["event_type"] == "metric"],
+            [row for row in latest if row["event_type"] == "auth_threat" and row["analysis_status"] != "historical"],
+        )
