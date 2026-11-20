@@ -174,7 +174,8 @@ class Storage:
                 """SELECT * FROM metadata AS point WHERE tenant_id=? AND event_type='metric'
                    AND payload_uuid=(SELECT payload_uuid FROM metadata
                        WHERE tenant_id=point.tenant_id AND source_id=point.source_id AND event_type='metric'
-                       ORDER BY event_time DESC, payload_uuid DESC LIMIT 1)
+                       ORDER BY event_time DESC, (analysis_status = 'historical'),
+                                received_at, payload_uuid LIMIT 1)
                    ORDER BY source_id""",
                 (tenant,),
             )
