@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useFleetPolling } from './hooks/useFleetPolling';
 import { ConnectionBanner } from './components/ConnectionBanner';
 import { BufferStatusCard } from './components/BufferStatusCard';
@@ -9,11 +9,13 @@ import { IncidentDetailView } from './components/IncidentDetailView';
 import { ScenarioResultsView } from './components/ScenarioResultsView';
 import { OperatorSettingsModal } from './components/OperatorSettingsModal';
 import { apiClient } from './api/client';
+import { BenchmarkPanel } from './components/BenchmarkPanel';
 
 type TabKey = 'fleet' | 'inspector' | 'incidents' | 'scenarios';
 
 export function App() {
   const [session, setSession] = useState(0);
+  const resetDashboard = useCallback(() => setSession((value) => value + 1), []);
 
   return (
     <>
@@ -26,18 +28,18 @@ export function App() {
         if (!tenant || !token) return;
         apiClient.setTenant(tenant, token);
         form.reset();
-        setSession((value) => value + 1);
+        resetDashboard();
       }}>
         <label>Tenant ID <input name="tenant" required className="input-text" /></label>
         <label>Operator token <input name="token" type="password" required autoComplete="off" className="input-text" /></label>
         <button className="action-btn">Connect dashboard</button>
       </form>
-      <Dashboard key={session} />
+      <Dashboard key={session} onCredentialsChanged={resetDashboard} />
     </>
   );
 }
 
-function Dashboard() {
+function Dashboard({ onCredentialsChanged }: { onCredentialsChanged: () => void }) {
   const [activeTab, setActiveTab] = useState<TabKey>('fleet');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [inspectPayloadUuid, setInspectPayloadUuid] = useState<string | undefined>(undefined);
@@ -117,12 +119,13 @@ function Dashboard() {
               onInspectPayload={handleInspectPayload}
             />
             <TransitionsView isFixtureMode={isFixtureMode} />
+            {!isFixtureMode && <BenchmarkPanel />}
           </div>
         )}
 
         {activeTab === 'inspector' && (
           <div className="tab-pane">
-            <PayloadInspector isFixtureMode={isFixtureMode} initialUuid={inspectPayloadUuid} />
+            <PayloadInspector key={String(isFixtureMode)} isFixtureMode={isFixtureMode} initialUuid={inspectPayloadUuid} />
           </div>
         )}
 
@@ -147,8 +150,6 @@ function Dashboard() {
           <span>Cicada Observability SaaS v1.0.0</span>
           <span>&bull;</span>
           <span>Scope: {apiClient.getTenantId()}</span>
-          <span>&bull;</span>
-          <span>Timing Resolution: performance.now() &plusmn;0.1ms</span>
         </div>
         <div className="footer-right">
           <span>Prototype</span>
@@ -161,7 +162,7 @@ function Dashboard() {
       <OperatorSettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
-        onSave={() => refreshNow()}
+        onSave={onCredentialsChanged}
       />
     </div>
   );

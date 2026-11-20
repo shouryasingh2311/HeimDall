@@ -51,6 +51,7 @@ export interface MetadataPayload {
 
 export interface FleetSource {
   source_id: string;
+  payload_uuid?: string;
   collector_id: string;
   health: HealthState;
   reason_codes: string[];
@@ -177,6 +178,25 @@ export interface BenchmarkRenderPayload {
 export interface BenchmarkRenderResponse {
   accepted: boolean;
   first_recorded: boolean;
+}
+
+export interface TimingCohort {
+  eligible: number;
+  samples: number;
+  clock_flagged: number;
+  missing: number;
+  p50_ms: number | null;
+  p95_ms: number | null;
+}
+
+export interface BenchmarkSummary {
+  window_seconds: number;
+  clock_uncertainty: string;
+  live: TimingCohort;
+  replay_or_delayed: TimingCohort;
+  all: TimingCohort;
+  alert_delay_ms: number | null;
+  offline: { collector_id: string; delay_ms: number }[];
 }
 
 export interface ScenarioResult {
