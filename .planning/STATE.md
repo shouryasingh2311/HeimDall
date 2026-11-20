@@ -2,9 +2,9 @@
 
 ## Current status
 
-Member 3's adapters, demo source, fixtures, local proof page, and verification runner are merged in `main` at `24925a6`. Member 2's dashboard and UI checks are on `origin/feat/operations-dashboard` at `1d90f88` and await integration. Member 1's core branch starts from the pulled `main`.
+Member 3's adapters, fixtures and verification changes were pulled from main at 2d02313. Member 1 implemented the Phase 1 collector and SaaS on feat/core-platform. Member 2's dashboard at 1d90f88 rendered a real receipt in the browser harness and awaits the operator credential handoff.
 
-Integrated phase gates remain pending. Teammate component checks are recorded in their status files. Organizer compatibility and live privacy/remediation checks still require end-to-end evidence.
+See the [Phase 1 summary](phases/01-two-tier-core-architecture-secure-transport/01-01-SUMMARY.md) for measured results. V01, the shipped V02 routes, and the V03 happy path passed. V00 is pending the official organizer input. Later privacy, health, buffering, and remediation checks remain pending.
 
 ## Working constraints
 
@@ -12,8 +12,8 @@ Eight hours; three people. M1 owns heavy core work, M2 UI, M3 inputs/validation/
 
 | Gate | Target | Actual evidence |
 |---|---|---|
-| G0 | 0:30 | Pending team kickoff/organizer sample |
-| G1 | 2:00 | Not started |
+| G0 | 0:30 | Phase 1 contracts exportable. Official organizer format pending. |
+| G1 | 2:00 | Live receipt rendered via test harness. V00 and direct UI credential setup pending. |
 | G2 | 3:30 | Not started |
 | G3 | 5:00 | Not started |
 | G4 | 5:45 | Not started |
@@ -22,7 +22,7 @@ Eight hours; three people. M1 owns heavy core work, M2 UI, M3 inputs/validation/
 
 ## Dependencies and risks
 
-Organizer sample, schema, transport, and final target values are unconfirmed. End-to-end TLS and browser trust await integration. M1 is the critical path. Scope reductions in TEAM_EXECUTION.md apply. Regional hosting remains design-only.
+Organizer sample, schema, transport, and final target values are unconfirmed. Collector HTTPS and certificate rejection were tested. Direct dashboard use needs generated operator credentials and local CA trust. Region authorization is in place. Regional hosting remains design-only.
 
 ## Updating state during build
 
