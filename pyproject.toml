@@ -24,6 +24,9 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 include = ["backend*"]
 
+[tool.setuptools.package-data]
+"backend.collector" = ["static/*.html", "static/*.css", "static/theme.js"]
+
 [tool.pytest.ini_options]
 addopts = "-ra"
 testpaths = ["tests"]

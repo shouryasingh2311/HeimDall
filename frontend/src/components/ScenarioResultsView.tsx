@@ -1,3 +1,4 @@
+import { CollectorLink } from './CollectorLink';
 import React, { useCallback, useState, useEffect } from 'react';
 import type { ScenarioResult } from '../types/contracts';
 import { apiClient } from '../api/client';
@@ -67,9 +68,8 @@ export const ScenarioResultsView: React.FC<ScenarioResultsViewProps> = ({
   return (
     <div className="section-block scenarios-section">
       <div className="section-header">
-        <h2 className="section-title">Hackathon Scenario Verification (1–8)</h2>
+        <h2 className="section-title">Verification runs</h2>
         <div className="header-actions">
-          <span className="count-tag">8 Verification Scenarios</span>
           <button
             type="button"
             className="action-btn text-xs"
@@ -84,32 +84,32 @@ export const ScenarioResultsView: React.FC<ScenarioResultsViewProps> = ({
       {/* Local Runner Isolation Notice */}
       <div className="scenario-info-banner">
         Start synthetic inputs from the local collector and return here for the observed results. Open{' '}
-        <a href="http://localhost:9001/scenarios" target="_blank" rel="noreferrer" className="external-link">
+        <CollectorLink page="scenarios" className="external-link">
           the local scenario runner
-        </a>{' '}
+        </CollectorLink>{' '}
         in a separate browser window.
       </div>
 
       {/* Aggregate Scoreboard */}
       <div className="scenario-scoreboard">
         <div className="score-stat">
-          <span className="stat-label">Total Scenarios:</span>
+          <span className="stat-label">Scenarios</span>
           <span className="stat-val mono">8</span>
         </div>
         <div className="score-stat">
-          <span className="stat-label">Verified Passed:</span>
+          <span className="stat-label">Passed</span>
           <span className="stat-val mono text-valid">{passedCount} / 8</span>
         </div>
         <div className="score-stat">
-          <span className="stat-label">Running:</span>
+          <span className="stat-label">Running</span>
           <span className="stat-val mono">{runningCount}</span>
         </div>
         <div className="score-stat">
-          <span className="stat-label">Failed:</span>
+          <span className="stat-label">Failed</span>
           <span className="stat-val mono text-alert">{failedCount}</span>
         </div>
         <div className="score-stat">
-          <span className="stat-label">Blocked:</span>
+          <span className="stat-label">Blocked</span>
           <span className="stat-val mono text-warn">{blockedCount}</span>
         </div>
       </div>
@@ -117,8 +117,7 @@ export const ScenarioResultsView: React.FC<ScenarioResultsViewProps> = ({
       {/* Honest Error State */}
       {fetchError && (
         <div className="alert-banner mb-3" role="alert">
-          <strong>Scenario Summary Service Notice:</strong> {fetchError}.
-          Scenario runners and local raw test logs remain isolated on Member 3&apos;s local test harness.
+          <strong>Results unavailable.</strong> {fetchError}.
         </div>
       )}
 
@@ -145,9 +144,9 @@ export const ScenarioResultsView: React.FC<ScenarioResultsViewProps> = ({
                 </span>
               </div>
 
-              <h4 className="scenario-title">
+              <h3 className="scenario-title">
                 {SCENARIO_NAMES[scen.scenario_id] || `Scenario ${scen.scenario_id}`}
-              </h4>
+              </h3>
 
               <div className="scenario-meta mono text-xs">
                 <div>Run ID: {scen.run_id}</div>

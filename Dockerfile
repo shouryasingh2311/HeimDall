@@ -9,6 +9,7 @@ WORKDIR /build/frontend
 COPY frontend/package.json ./
 RUN npm install
 
+COPY backend/collector/static/theme.* /build/backend/collector/static/
 COPY frontend/ ./
 RUN npm run build
 

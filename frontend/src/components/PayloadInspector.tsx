@@ -1,3 +1,4 @@
+import { CollectorLink } from './CollectorLink';
 import React, { useState } from 'react';
 import type { PayloadDetail } from '../types/contracts';
 import { apiClient } from '../api/client';
@@ -71,34 +72,15 @@ export const PayloadInspector: React.FC<PayloadInspectorProps> = ({ isFixtureMod
 
   return (
     <div className="section-block payload-inspector-section">
-      <div className="section-header">
-        <h2 className="section-title">Received Payload Egress Inspector</h2>
-        <span className="count-tag">Phase 2 / Gate G1–G2 Egress Verification</span>
-      </div>
-
-      {/* Two-Window Privacy Verification Protocol */}
-      <div className="inspector-privacy-callout">
-        <div className="callout-title">Compare local and SaaS records (V03)</div>
-        <p className="privacy-intro">
-          This SaaS view inspects only allow-listed, egressed metadata committed to central storage.
-          Raw log lines, credentials, database passwords, and client IP addresses are dropped locally at the edge.
-        </p>
-        <div className="procedure-steps">
-          <div className="proc-step">
-            <span className="step-num">Step 1:</span> Open the local collector loopback window at{' '}
-            <a href="http://localhost:9001/audit" target="_blank" rel="noreferrer" className="external-link">
-              http://localhost:9001/audit
-            </a>{' '}
-            to inspect the local preview (known credentials masked) and the exact outbound body.
-          </div>
-          <div className="proc-step">
-            <span className="step-num">Step 2:</span> Inspect the identical <code>payload_uuid</code> in this central window.
-          </div>
-          <div className="proc-step">
-            <span className="step-num">Step 3:</span> Compare the collector’s SHA-256 digest with the digest SaaS calculated on receipt.
-          </div>
-        </div>
-      </div>
+      <div className="section-header"><h2 className="section-title">Find a payload</h2></div>
+      <details className="inspector-privacy-callout">
+        <summary>How to verify a collector receipt</summary>
+        <ol className="procedure-steps">
+          <li>Open the <CollectorLink page="audit">local egress proof</CollectorLink> to inspect the masked preview and outbound bytes.</li>
+          <li>Look up the same payload UUID here. The central store receives only approved metadata.</li>
+          <li>Compare the collector’s SHA-256 digest with the digest on the receipt.</li>
+        </ol>
+      </details>
 
       {/* Quick Select Preset UUIDs */}
       {isFixtureMode && <div className="quick-select-row">
@@ -146,11 +128,10 @@ export const PayloadInspector: React.FC<PayloadInspectorProps> = ({ isFixtureMod
           {/* Cryptographic Digest Verification Matcher */}
           <div className="digest-matcher-card">
             <div className="matcher-header">
-              <span className="matcher-tag">CRYPTOGRAPHIC INTEGRITY MATCHER</span>
-              <span className="text-xs text-muted">Verification Gate: PRIV-05 / V03</span>
+              <span className="matcher-tag">Compare SHA-256 digests</span>
             </div>
             <p className="matcher-help">
-              Paste the SHA-256 digest reported by the local collector (Window 1: <code>http://localhost:9001/audit</code>) to verify match:
+              Paste the digest from the local egress proof.
             </p>
             <div className="matcher-input-row">
               <input

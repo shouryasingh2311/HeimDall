@@ -1,3 +1,4 @@
+import { Dialog } from './Dialog';
 import React, { useState } from 'react';
 import { apiClient } from '../api/client';
 import type { ApiClientConfig } from '../types/contracts';
@@ -19,15 +20,6 @@ export const OperatorSettingsModal: React.FC<OperatorSettingsModalProps> = ({
   const [baseUrl, setBaseUrl] = useState(currentConfig.baseUrl);
   const [showToken, setShowToken] = useState(false);
 
-  React.useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
-
   if (!isOpen) return null;
 
   const handleApplyPreset = (presetTenant: 'tenant-alpha' | 'tenant-beta') => {
@@ -47,10 +39,9 @@ export const OperatorSettingsModal: React.FC<OperatorSettingsModalProps> = ({
   };
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
-      <div className="modal-content">
+    <Dialog titleId="settings-modal-title" onClose={onClose}>
         <div className="modal-header">
-          <h2 id="settings-modal-title" className="modal-title">Operator Credential & Tenant Scope</h2>
+          <h2 id="settings-modal-title" className="modal-title">Connection settings</h2>
           <button type="button" className="modal-close-btn" onClick={onClose} aria-label="Close settings">
             &times;
           </button>
@@ -149,11 +140,10 @@ export const OperatorSettingsModal: React.FC<OperatorSettingsModalProps> = ({
               Cancel
             </button>
             <button type="submit" className="btn-action-primary">
-              Apply &amp; Reset Caches
+              Apply settings
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Dialog>
   );
 };

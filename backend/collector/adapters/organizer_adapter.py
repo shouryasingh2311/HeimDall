@@ -21,7 +21,7 @@ from backend.collector.demo_source import DemoSource, RawEvent
 
 class OrganizerAdapter:
     """
-    Adapter for hackathon organizer telemetry feeds.
+    Adapter for external upstream telemetry feeds and stream format translation.
     Provides clear distinction between REAL_ORGANIZER mode and DEMO_FALLBACK mode.
     """
 

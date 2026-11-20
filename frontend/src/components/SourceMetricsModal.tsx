@@ -1,3 +1,4 @@
+import { Dialog } from './Dialog';
 import React, { useState, useEffect } from 'react';
 import type { FleetSource, PayloadDetail } from '../types/contracts';
 import { apiClient } from '../api/client';
@@ -25,12 +26,6 @@ export const SourceMetricsModal: React.FC<SourceMetricsModalProps> = ({
   useEffect(() => {
     if (!sourceId) return;
 
-    // Keyboard listener for Escape key to close modal
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-
     if (isFixtureMode) {
       setError(null);
       const mockPoints = MOCK_SOURCE_METRICS_STORE[sourceId] || [];
@@ -40,7 +35,7 @@ export const SourceMetricsModal: React.FC<SourceMetricsModalProps> = ({
       );
       setHistory(sorted);
       setLoading(false);
-      return () => window.removeEventListener('keydown', handleKeyDown);
+      return;
     }
 
     let active = true;
@@ -68,9 +63,8 @@ export const SourceMetricsModal: React.FC<SourceMetricsModalProps> = ({
     fetchHistory();
     return () => {
       active = false;
-      window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [sourceId, latestUuid, isFixtureMode, onClose]);
+  }, [sourceId, latestUuid, isFixtureMode]);
 
   if (!source) return null;
 
@@ -79,7 +73,7 @@ export const SourceMetricsModal: React.FC<SourceMetricsModalProps> = ({
     values: (number | null)[],
     minVal = 0,
     maxVal = 100,
-    strokeColor = '#3b82f6',
+    strokeColor = 'var(--chart-memory)',
   ) => {
     if (values.filter((value) => value !== null).length < 2) {
       return <div className="text-xs text-muted">Insufficient historical points</div>;
@@ -107,7 +101,7 @@ export const SourceMetricsModal: React.FC<SourceMetricsModalProps> = ({
     )).join(' ');
 
     return (
-      <svg className="sparkline-svg" width={width} height={height} aria-hidden="true">
+      <svg className="sparkline-svg" viewBox={`0 0 ${width} ${height}`} width={width} height={height} aria-hidden="true">
         <path d={pathData} fill="none" stroke={strokeColor} strokeWidth="2" strokeLinecap="round" />
         {points.map((point, i) => point && <circle key={i} cx={point[0]} cy={point[1]} r="3" fill={strokeColor} />)}
       </svg>
@@ -121,11 +115,10 @@ export const SourceMetricsModal: React.FC<SourceMetricsModalProps> = ({
   const format = (value: number | null | undefined, unit: string) => value == null ? '—' : `${value.toFixed(1)}${unit}`;
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="source-modal-title">
-      <div className="modal-content modal-large">
+    <Dialog titleId="source-modal-title" onClose={onClose} large>
         <div className="modal-header">
           <div>
-            <span className="count-tag font-semibold">SOURCE TELEMETRY ENGINE</span>
+            <span className="count-tag font-semibold">Source trends</span>
             <h2 id="source-modal-title" className="modal-title mono">
               {source.source_id}
             </h2>
@@ -145,7 +138,7 @@ export const SourceMetricsModal: React.FC<SourceMetricsModalProps> = ({
                 {source.metrics.cpu_pct !== null ? `${source.metrics.cpu_pct.toFixed(1)}%` : '—'}
               </span>
             </div>
-            {renderSparkline(cpuPoints, 0, 100, '#10b981')}
+            {renderSparkline(cpuPoints, 0, 100, 'var(--chart-cpu)')}
             <span className="text-xs text-muted">Scale: 0% - 100%</span>
           </div>
 
@@ -156,7 +149,7 @@ export const SourceMetricsModal: React.FC<SourceMetricsModalProps> = ({
                 {source.metrics.memory_pct !== null ? `${source.metrics.memory_pct.toFixed(1)}%` : '—'}
               </span>
             </div>
-            {renderSparkline(memPoints, 0, 100, '#3b82f6')}
+            {renderSparkline(memPoints, 0, 100, 'var(--chart-memory)')}
             <span className="text-xs text-muted">Scale: 0% - 100%</span>
           </div>
 
@@ -167,7 +160,7 @@ export const SourceMetricsModal: React.FC<SourceMetricsModalProps> = ({
                 {source.metrics.latency_ms !== null ? `${source.metrics.latency_ms.toFixed(1)} ms` : '—'}
               </span>
             </div>
-            {renderSparkline(latPoints, 0, maxLat, '#f59e0b')}
+            {renderSparkline(latPoints, 0, maxLat, 'var(--chart-latency)')}
             <span className="text-xs text-muted">Scale: 0ms - {maxLat.toFixed(0)}ms</span>
           </div>
         </div>
@@ -182,7 +175,7 @@ export const SourceMetricsModal: React.FC<SourceMetricsModalProps> = ({
         {/* Chronological Event-Time Sorted Table */}
         <div className="historical-table-section">
           <div className="table-header-row">
-            <h4 className="section-title">Temporal Event Sequence (Strict Event-Time UTC)</h4>
+            <h4 className="section-title">Event history</h4>
             <span className="count-tag">{history.length} Data Points</span>
           </div>
 
@@ -248,7 +241,6 @@ export const SourceMetricsModal: React.FC<SourceMetricsModalProps> = ({
             Close
           </button>
         </div>
-      </div>
-    </div>
+    </Dialog>
   );
 };

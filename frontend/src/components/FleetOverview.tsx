@@ -78,8 +78,8 @@ export const FleetOverview: React.FC<FleetOverviewProps> = ({
   if (!data || (data.collectors.length === 0 && data.sources.length === 0)) {
     return (
       <div className="card empty-card">
-        <h3>No Active Telemetry Received</h3>
-        <p>No collectors or sources have registered with tenant scope yet.</p>
+        <h3>{data ? 'No registered sources' : 'Awaiting fleet telemetry'}</h3>
+        <p>{data ? 'Collectors and sources will appear here when they register.' : 'Collector and source readings will appear after the first successful sync.'}</p>
       </div>
     );
   }
@@ -89,8 +89,8 @@ export const FleetOverview: React.FC<FleetOverviewProps> = ({
       {/* Collectors Section */}
       <section className="section-block">
         <div className="section-header">
-          <h2 className="section-title">Edge Telemetry Collectors</h2>
-          <span className="count-tag">{data.collectors.length} Registered</span>
+          <h2 className="section-title">Edge collectors</h2>
+          <span className="count-tag">{data.collectors.length} registered</span>
         </div>
 
         <div className="table-responsive">
@@ -150,8 +150,8 @@ export const FleetOverview: React.FC<FleetOverviewProps> = ({
       {/* Pseudonymous Sources Section */}
       <section className="section-block">
         <div className="section-header">
-          <h2 className="section-title">Monitored Service Sources (Pseudonymized)</h2>
-          <span className="count-tag">{data.sources.length} Active</span>
+          <h2 className="section-title">Monitored sources</h2>
+          <span className="count-tag">{data.sources.length} active</span>
         </div>
 
         <div className="table-responsive">

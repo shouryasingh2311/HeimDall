@@ -1,4 +1,4 @@
-﻿# HeimDall - Zero-Git Remote One-Liner Installer (Windows)
+# HeimDall - Zero-Git Remote One-Liner Installer (Windows)
 $ErrorActionPreference = "Stop"
 
 Write-Host "==========================================================================" -ForegroundColor Cyan

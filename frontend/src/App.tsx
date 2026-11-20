@@ -1,4 +1,6 @@
-import { useCallback, useState } from 'react';
+import { CollectorLink } from './components/CollectorLink';
+import { useWorkspaceMotion } from './hooks/useWorkspaceMotion';
+import { useCallback, useRef, useState } from 'react';
 import { useFleetPolling } from './hooks/useFleetPolling';
 import { ConnectionBanner } from './components/ConnectionBanner';
 import { BufferStatusCard } from './components/BufferStatusCard';
@@ -11,50 +13,26 @@ import { OperatorSettingsModal } from './components/OperatorSettingsModal';
 import { apiClient } from './api/client';
 import { BenchmarkPanel } from './components/BenchmarkPanel';
 
+const views = [
+  { key: 'fleet', label: 'Fleet overview', name: 'Fleet & Health State', description: 'Collector health, source activity, and the edge outbox.' },
+  { key: 'inspector', label: 'Payload inspector', name: 'Payload Egress Inspector', description: 'Trace an approved payload from the collector to its central receipt.' },
+  { key: 'incidents', label: 'Incidents', name: 'AIOps Incidents & Remediation', description: 'Investigate correlated alerts and review simulated remediation.' },
+  { key: 'scenarios', label: 'Scenario results', name: 'Scenario Verification (1–8)', description: 'Review the evidence recorded by each local verification run.' },
+] as const;
+
 type TabKey = 'fleet' | 'inspector' | 'incidents' | 'scenarios';
 
 export function App() {
   const [session, setSession] = useState(0);
   const resetDashboard = useCallback(() => setSession((value) => value + 1), []);
 
-  return (
-    <>
-      <form
-        className="search-form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          const form = event.currentTarget;
-          const data = new FormData(form);
-          const tenant = String(data.get('tenant') ?? '').trim();
-          const token = String(data.get('token') ?? '').trim();
-          if (!tenant || !token) return;
-          apiClient.setTenant(tenant, token);
-          form.reset();
-          resetDashboard();
-        }}
-      >
-        <label>
-          Tenant ID <input name="tenant" required className="input-text" />
-        </label>
-        <label>
-          Operator token{' '}
-          <input
-            name="token"
-            type="password"
-            required
-            autoComplete="off"
-            className="input-text"
-          />
-        </label>
-        <button className="action-btn">Connect dashboard</button>
-      </form>
-      <Dashboard key={session} onCredentialsChanged={resetDashboard} />
-    </>
-  );
+  return <Dashboard key={session} onCredentialsChanged={resetDashboard} />;
 }
 
 function Dashboard({ onCredentialsChanged }: { onCredentialsChanged: () => void }) {
   const [activeTab, setActiveTab] = useState<TabKey>('fleet');
+  const workspace = useRef<HTMLElement>(null);
+  useWorkspaceMotion(workspace, activeTab);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [inspectPayloadUuid, setInspectPayloadUuid] = useState<string | undefined>(undefined);
   const [targetIncidentId, setTargetIncidentId] = useState<string | undefined>(undefined);
@@ -80,151 +58,129 @@ function Dashboard({ onCredentialsChanged }: { onCredentialsChanged: () => void 
     setActiveTab('incidents');
   };
 
+  const view = views.find((item) => item.key === activeTab)!;
   return (
     <div className="heimdal-app-shell">
-      <ConnectionBanner
-        serverStatus={serverStatus}
-        error={error}
-        lastSyncUtc={lastSyncUtc}
-        tenantId={apiClient.getTenantId()}
-        isFixtureMode={isFixtureMode}
-        onToggleFixtureMode={setFixtureMode}
-        onRefresh={refreshNow}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-        isLoading={isLoading}
-      />
-
-      <nav className="tab-navigation" role="tablist" aria-label="Dashboard operational views">
-        <button
-          type="button"
-          role="tab"
-          id="tab-fleet"
-          aria-selected={activeTab === 'fleet'}
-          aria-controls="panel-fleet"
-          className={`tab-btn ${activeTab === 'fleet' ? 'active' : ''}`}
-          onClick={() => setActiveTab('fleet')}
-        >
-          Fleet &amp; Health State
-        </button>
-        <button
-          type="button"
-          role="tab"
-          id="tab-inspector"
-          aria-selected={activeTab === 'inspector'}
-          aria-controls="panel-inspector"
-          className={`tab-btn ${activeTab === 'inspector' ? 'active' : ''}`}
-          onClick={() => setActiveTab('inspector')}
-        >
-          Payload Egress Inspector
-        </button>
-        <button
-          type="button"
-          role="tab"
-          id="tab-incidents"
-          aria-selected={activeTab === 'incidents'}
-          aria-controls="panel-incidents"
-          className={`tab-btn ${activeTab === 'incidents' ? 'active' : ''}`}
-          onClick={() => setActiveTab('incidents')}
-        >
-          AIOps Incidents &amp; Remediation
-        </button>
-        <button
-          type="button"
-          role="tab"
-          id="tab-scenarios"
-          aria-selected={activeTab === 'scenarios'}
-          aria-controls="panel-scenarios"
-          className={`tab-btn ${activeTab === 'scenarios' ? 'active' : ''}`}
-          onClick={() => setActiveTab('scenarios')}
-        >
-          Scenario Verification (1–8)
-        </button>
-      </nav>
-
-      <main className="heimdal-main-content">
-        {activeTab === 'fleet' && (
-          <div
-            id="panel-fleet"
-            role="tabpanel"
-            aria-labelledby="tab-fleet"
-            tabIndex={0}
-            className="tab-pane"
-          >
-            <BufferStatusCard
-              collectors={data?.collectors || []}
-              sources={data?.sources || []}
-              isFixtureMode={isFixtureMode}
-            />
-            <FleetOverview
-              data={data}
-              isLoading={isLoading}
-              isFixtureMode={isFixtureMode}
-              onInspectPayload={handleInspectPayload}
-            />
-            <TransitionsView key={String(isFixtureMode)} isFixtureMode={isFixtureMode} />
-            {!isFixtureMode && <BenchmarkPanel />}
-          </div>
-        )}
-
-        {activeTab === 'inspector' && (
-          <div
-            id="panel-inspector"
-            role="tabpanel"
-            aria-labelledby="tab-inspector"
-            tabIndex={0}
-            className="tab-pane"
-          >
-            <PayloadInspector key={String(isFixtureMode)} isFixtureMode={isFixtureMode} initialUuid={inspectPayloadUuid} />
-          </div>
-        )}
-
-        {activeTab === 'incidents' && (
-          <div
-            id="panel-incidents"
-            role="tabpanel"
-            aria-labelledby="tab-incidents"
-            tabIndex={0}
-            className="tab-pane"
-          >
-            <IncidentDetailView
-              key={String(isFixtureMode)}
-              isFixtureMode={isFixtureMode}
-              initialIncidentId={targetIncidentId}
-              onInspectPayload={handleInspectPayload}
-            />
-          </div>
-        )}
-
-        {activeTab === 'scenarios' && (
-          <div
-            id="panel-scenarios"
-            role="tabpanel"
-            aria-labelledby="tab-scenarios"
-            tabIndex={0}
-            className="tab-pane"
-          >
-            <ScenarioResultsView
-              key={String(isFixtureMode)}
-              isFixtureMode={isFixtureMode}
-              onInspectPayload={handleInspectPayload}
-              onSelectIncident={handleSelectIncident}
-            />
-          </div>
-        )}
-      </main>
-
-      <footer className="heimdal-footer">
-        <div className="footer-left">
-          <span>Heimdal Observability SaaS v1.0.0</span>
-          <span>&bull;</span>
-          <span>Scope: {apiClient.getTenantId()}</span>
+      <a className="skip-link" href="#workspace">Skip to workspace</a>
+      <aside className="rail">
+        <div className="wordmark"><img src="/favicon.svg" alt="" width="34" height="34" /> Heimdal</div>
+        <div className="rail-label">Workspace</div>
+        <nav className="tab-navigation" role="tablist" aria-label="Dashboard operational views"
+          onKeyDown={(event) => {
+            const index = views.findIndex((item) => item.key === activeTab);
+            const next = event.key === 'Home' ? 0 : event.key === 'End' ? views.length - 1
+              : ['ArrowRight', 'ArrowDown'].includes(event.key) ? (index + 1) % views.length
+              : ['ArrowLeft', 'ArrowUp'].includes(event.key) ? (index + views.length - 1) % views.length : -1;
+            if (next < 0) return;
+            event.preventDefault();
+            setActiveTab(views[next].key);
+            document.getElementById(`tab-${views[next].key}`)?.focus();
+          }}>
+          {views.map((item) => (
+            <button key={item.key} type="button" role="tab" id={`tab-${item.key}`}
+              aria-selected={activeTab === item.key} aria-controls={`panel-${item.key}`}
+              aria-label={item.name} tabIndex={activeTab === item.key ? 0 : -1}
+              className="tab-btn" onClick={() => setActiveTab(item.key)}>
+              <span aria-hidden="true" className={`nav-icon icon-${item.key}`} />
+              {item.label}
+            </button>
+          ))}
+        </nav>
+        <div className="rail-bottom">
+          <span className="rail-label">Collector tools</span>
+          <CollectorLink page="audit">Local egress proof <span aria-hidden="true">↗</span></CollectorLink>
+          <CollectorLink page="scenarios">Scenario runner <span aria-hidden="true">↗</span></CollectorLink>
         </div>
-        <div className="footer-right">
-          <span>Prototype</span>
-          <span>&bull;</span>
-          <span>Separate Local Audit: <code>http://localhost:9001/audit</code></span>
-        </div>
-      </footer>
+      </aside>
+      <div className="workspace">
+        <header className="workspace-bar">
+          <span>Operations <span className="slash">/</span> <strong>{view.label}</strong></span>
+          <div className="workspace-tools">
+            <label className="theme-switch">
+              <input type="checkbox" role="switch" data-theme-switch defaultChecked={document.documentElement.dataset.theme === 'dark'} />
+              Dark mode
+            </label>
+            <button className="scope-button" onClick={() => setIsSettingsOpen(true)} aria-label="Open tenant scope settings">
+              <span className="scope-symbol" aria-hidden="true">⌘</span> {apiClient.getTenantId()} <span aria-hidden="true">⌄</span>
+            </button>
+          </div>
+        </header>
+        <main ref={workspace} id="workspace" tabIndex={-1} className="heimdal-main-content">
+          <div className="page-title"><h1>{view.label}</h1><p>{view.description}</p></div>
+          <ConnectionBanner serverStatus={serverStatus} error={error} lastSyncUtc={lastSyncUtc}
+            isFixtureMode={isFixtureMode} onToggleFixtureMode={setFixtureMode} onRefresh={refreshNow}
+            isLoading={isLoading} onCredentialsChanged={onCredentialsChanged} />
+          {activeTab === 'fleet' && (
+            <div
+              id="panel-fleet"
+              role="tabpanel"
+              aria-labelledby="tab-fleet"
+              tabIndex={0}
+              className="tab-pane"
+            >
+              <BufferStatusCard
+                data={data}
+              />
+              <FleetOverview
+                data={data}
+                isLoading={isLoading}
+                isFixtureMode={isFixtureMode}
+                onInspectPayload={handleInspectPayload}
+              />
+              <TransitionsView key={String(isFixtureMode)} isFixtureMode={isFixtureMode} />
+              {!isFixtureMode && <BenchmarkPanel />}
+            </div>
+          )}
+
+          {activeTab === 'inspector' && (
+            <div
+              id="panel-inspector"
+              role="tabpanel"
+              aria-labelledby="tab-inspector"
+              tabIndex={0}
+              className="tab-pane"
+            >
+              <PayloadInspector key={String(isFixtureMode)} isFixtureMode={isFixtureMode} initialUuid={inspectPayloadUuid} />
+            </div>
+          )}
+
+          {activeTab === 'incidents' && (
+            <div
+              id="panel-incidents"
+              role="tabpanel"
+              aria-labelledby="tab-incidents"
+              tabIndex={0}
+              className="tab-pane"
+            >
+              <IncidentDetailView
+                key={String(isFixtureMode)}
+                isFixtureMode={isFixtureMode}
+                initialIncidentId={targetIncidentId}
+                onInspectPayload={handleInspectPayload}
+              />
+            </div>
+          )}
+
+          {activeTab === 'scenarios' && (
+            <div
+              id="panel-scenarios"
+              role="tabpanel"
+              aria-labelledby="tab-scenarios"
+              tabIndex={0}
+              className="tab-pane"
+            >
+              <ScenarioResultsView
+                key={String(isFixtureMode)}
+                isFixtureMode={isFixtureMode}
+                onInspectPayload={handleInspectPayload}
+                onSelectIncident={handleSelectIncident}
+              />
+            </div>
+          )}
+        </main>
+
+        <footer className="heimdal-footer">Heimdal Observability <span>Central workspace · Metadata only</span></footer>
+      </div>
 
       {/* Operator Settings & Scope Modal */}
       <OperatorSettingsModal

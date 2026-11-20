@@ -51,8 +51,8 @@ export const TransitionsView: React.FC<TransitionsViewProps> = ({ isFixtureMode 
   return (
     <div className="section-block transitions-section">
       <div className="section-header">
-        <h2 className="section-title">UTC Health Transition History</h2>
-        <span className="count-tag">{transitions.length} Recorded Transitions</span>
+        <h2 className="section-title">Health transitions</h2>
+        <span className="count-tag">{transitions.length} recorded</span>
       </div>
 
       {unavailable ? (

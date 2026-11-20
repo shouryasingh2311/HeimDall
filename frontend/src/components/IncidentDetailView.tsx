@@ -213,13 +213,13 @@ export const IncidentDetailView: React.FC<IncidentDetailViewProps> = ({
   return (
     <div className="section-block incidents-section">
       <div className="section-header">
-        <h2 className="section-title">Correlated Incidents & Remediation (AIOps)</h2>
-        <span className="count-tag">{incidents.length} Active Incidents</span>
+        <h2 className="section-title">Incident queue</h2>
+        <span className="count-tag">{incidents.length} in scope</span>
       </div>
 
       {listError && (
         <div className="alert-banner mb-3" role="alert">
-          <strong>Incident Service Notice:</strong> {listError}
+          <strong>Incident feed unavailable.</strong> {listError}
         </div>
       )}
 
@@ -227,7 +227,7 @@ export const IncidentDetailView: React.FC<IncidentDetailViewProps> = ({
         {/* Incident List Sidebar */}
         <div className="incidents-sidebar">
           {incidents.length === 0 ? (
-            <div className="empty-text">No open incidents detected.</div>
+            <div className="empty-text">{listError ? 'Waiting for the incident feed.' : 'No open incidents detected.'}</div>
           ) : (
             incidents.map((inc) => (
               <button
@@ -278,14 +278,14 @@ export const IncidentDetailView: React.FC<IncidentDetailViewProps> = ({
                     <div className="mono text-xs text-muted">Method: {detail.score_method}</div>
                   )}
                   <div className="score-disclaimer">
-                    Heuristic statistical correlation only. Calibrated confidence and causal certainty are deliberately omitted per policy.
+                    This score measures correlation. Additional evidence is needed to establish cause.
                   </div>
                 </div>
               </div>
 
-              {/* Phase 5: Affected Pseudonymous Sources */}
+              {/* Phase 5: Affected sources */}
               <div className="detail-section">
-                <h4 className="detail-subhead">Affected Pseudonymous Sources ({detail.source_ids.length})</h4>
+                <h4 className="detail-subhead">Affected sources ({detail.source_ids.length})</h4>
                 <div className="source-badges-row">
                   {detail.source_ids.map((srcId) => (
                     <span key={srcId} className="pseudonym-badge mono">
@@ -301,13 +301,13 @@ export const IncidentDetailView: React.FC<IncidentDetailViewProps> = ({
 
               {/* Likely Root Mechanism */}
               <div className="detail-section">
-                <h4 className="detail-subhead">Likely Root Mechanism (Statistical Synthesis)</h4>
+                <h4 className="detail-subhead">Likely cause</h4>
                 <p className="likely-cause-text">{detail.likely_cause}</p>
               </div>
 
-              {/* Reasoning Chronology */}
+              {/* Investigation notes */}
               <div className="detail-section">
-                <h4 className="detail-subhead">Reasoning Chronology</h4>
+                <h4 className="detail-subhead">Investigation notes</h4>
                 <ol className="reasoning-list">
                   {detail.reasoning_steps.map((step, idx) => (
                     <li key={idx}>{step}</li>
@@ -317,7 +317,7 @@ export const IncidentDetailView: React.FC<IncidentDetailViewProps> = ({
 
               {/* Contributing Signals (Statistical Deviations) */}
               <div className="detail-section">
-                <h4 className="detail-subhead">Contributing Signals (Observed vs Baseline)</h4>
+                <h4 className="detail-subhead">Signals and baselines</h4>
                 <div className="table-responsive">
                   <table className="telemetry-table table-compact">
                     <thead>
@@ -377,14 +377,14 @@ export const IncidentDetailView: React.FC<IncidentDetailViewProps> = ({
               {/* Phase 6: Remediation Action Controls */}
               <div className="remediation-box">
                 <div className="remediation-header">
-                  <span className="sim-badge">SAFE SIMULATION PLAYBOOK</span>
+                  <span className="sim-badge">Simulation</span>
                   <h4 className="remediation-title">
-                    Autonomous Action: {proposal?.playbook || 'SCALE_CONTAINER_MEMORY'}
+                    Playbook {proposal?.playbook || 'SCALE_CONTAINER_MEMORY'}
                   </h4>
                 </div>
 
                 <div className="sim-notice">
-                  <strong>Simulation Invariant (simulation: true):</strong> Target action is hardcoded to safe container memory scaling in simulation. No production infrastructure is altered. Authorization is verified by central policy engine.
+                  The central policy engine authorizes memory scaling in the simulated container.
                 </div>
 
                 <p className="remediation-desc">

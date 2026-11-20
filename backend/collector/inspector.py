@@ -6,10 +6,11 @@ from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 from hashlib import sha256
 from hmac import compare_digest
+from pathlib import Path
 from time import monotonic
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import FileResponse, Response
 from uuid import UUID
 
 from backend.collector.demo_source import RawEvent
@@ -20,17 +21,7 @@ from backend.shared.config import CollectorSettings
 from backend.shared.models import MetadataPayload
 from backend.shared.scenarios import ScenarioNumber
 
-PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8">
-<title>Heimdal local egress proof</title><script src="/audit.js" defer></script></head><body>
-<h1>Local egress proof</h1>
-<p>Copy only the payload UUID and SHA-256 digest to the SaaS window.</p>
-<form><label>Local session token <input id="token" type="password" required autocomplete="off"></label>
-<label>Payload UUID (optional) <input id="lookup" autocomplete="off"></label>
-<button>Fetch local evidence</button></form><p id="status" role="status"></p>
-<h2>Payload UUID and SHA-256</h2><pre id="identity"></pre>
-<h2>Local input preview (known credentials masked)</h2><pre id="raw"></pre>
-<h2>Exact approved outbound bytes</h2><pre id="approved"></pre>
-<h2>Delivery and receipt</h2><pre id="receipt"></pre></body></html>"""
+STATIC = Path(__file__).with_name("static")
 
 JS = """document.querySelector('form').addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -126,7 +117,7 @@ def create_inspector(
         response.headers["Cache-Control"] = "no-store"
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Content-Security-Policy"] = (
-            "default-src 'none'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; form-action 'none'"
+            "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; form-action 'none'"
         )
         return response
 
@@ -137,7 +128,19 @@ def create_inspector(
 
     @app.get("/audit")
     async def page():
-        return HTMLResponse(PAGE)
+        return FileResponse(STATIC / "proof.html", media_type="text/html")
+
+    @app.get("/theme.js")
+    async def theme_script():
+        return FileResponse(STATIC / "theme.js", media_type="text/javascript")
+
+    @app.get("/theme.css")
+    async def theme_styles():
+        return FileResponse(STATIC / "theme.css", media_type="text/css")
+
+    @app.get("/collector.css")
+    async def stylesheet():
+        return FileResponse(STATIC / "collector.css", media_type="text/css")
 
     @app.get("/audit.js")
     async def script():
@@ -165,7 +168,7 @@ def create_inspector(
     if scenarios is not None:
         @app.get("/scenarios")
         async def scenario_page():
-            return HTMLResponse(SCENARIO_PAGE)
+            return FileResponse(STATIC / "scenarios.html", media_type="text/html")
 
         @app.get("/scenarios.js")
         async def scenario_script():
@@ -197,23 +200,6 @@ def create_inspector(
 
     return app
 
-
-SCENARIO_PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8">
-<title>Heimdal local scenarios</title><script src="/scenarios.js" defer></script></head><body>
-<h1>Local demo scenarios</h1>
-<label>Local session token <input id="token" type="password" autocomplete="off"></label>
-<ol>
-<li><button data-run="1">Verify local secret handling</button></li>
-<li><button data-run="2">Pause metadata delivery for 30 seconds</button></li>
-<li><button data-run="3">Count failed logins</button></li>
-<li><button data-run="4">Inject related network degradation</button></li>
-<li><button data-run="5">Detect a sustained CPU deviation</button></li>
-<li><button data-run="6">Group related alerts with an unrelated control</button></li>
-<li><button data-run="7">Replay duplicate and late events</button></li>
-<li><button data-run="8">Simulate memory remediation</button> Approve and roll back from the operator dashboard.</li>
-</ol>
-<button id="reset">Reset demo inputs</button>
-<p id="status" role="status"></p><pre id="result"></pre></body></html>"""
 
 SCENARIO_JS = """const token = document.getElementById('token');
 const status = document.getElementById('status');
