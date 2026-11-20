@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useFleetPolling } from './hooks/useFleetPolling';
 import { ConnectionBanner } from './components/ConnectionBanner';
+import { BufferStatusCard } from './components/BufferStatusCard';
 import { FleetOverview } from './components/FleetOverview';
 import { PayloadInspector } from './components/PayloadInspector';
 import { TransitionsView } from './components/TransitionsView';
 import { IncidentDetailView } from './components/IncidentDetailView';
 import { ScenarioResultsView } from './components/ScenarioResultsView';
+import { OperatorSettingsModal } from './components/OperatorSettingsModal';
 import { apiClient } from './api/client';
 
 type TabKey = 'fleet' | 'inspector' | 'incidents' | 'scenarios';
@@ -37,6 +39,7 @@ export function App() {
 
 function Dashboard() {
   const [activeTab, setActiveTab] = useState<TabKey>('fleet');
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const {
     data,
     isLoading,
@@ -58,6 +61,7 @@ function Dashboard() {
         isFixtureMode={isFixtureMode}
         onToggleFixtureMode={setFixtureMode}
         onRefresh={refreshNow}
+        onOpenSettings={() => setIsSettingsOpen(true)}
         isLoading={isLoading}
       />
 
@@ -95,6 +99,11 @@ function Dashboard() {
       <main className="cicada-main-content">
         {activeTab === 'fleet' && (
           <div className="tab-pane">
+            <BufferStatusCard
+              collectors={data?.collectors || []}
+              sources={data?.sources || []}
+              isFixtureMode={isFixtureMode}
+            />
             <FleetOverview data={data} isLoading={isLoading} />
             <TransitionsView isFixtureMode={isFixtureMode} />
           </div>
@@ -123,9 +132,9 @@ function Dashboard() {
         <div className="footer-left">
           <span>Cicada Observability SaaS v1.0.0</span>
           <span>&bull;</span>
-          <span>Timing Resolution: performance.now() &plusmn;0.1ms</span>
+          <span>Scope: {apiClient.getTenantId()}</span>
           <span>&bull;</span>
-          <span>Clock: RFC3339 UTC</span>
+          <span>Timing Resolution: performance.now() &plusmn;0.1ms</span>
         </div>
         <div className="footer-right">
           <span>Prototype</span>
@@ -133,6 +142,13 @@ function Dashboard() {
           <span>Separate Local Audit: <code>http://localhost:9001/audit</code></span>
         </div>
       </footer>
+
+      {/* Operator Settings & Scope Modal */}
+      <OperatorSettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        onSave={() => refreshNow()}
+      />
     </div>
   );
 }
