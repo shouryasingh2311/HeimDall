@@ -2,7 +2,7 @@
 
 ## Current status
 
-Phases 1–7 are integrated. [Phase 8](phases/08-unified-operations-dashboard-judge-verification-suite/08-01-SUMMARY.md) records the release integration and acceptance evidence for the synthetic demo. V00 still needs the official organizer input.
+All eight phases are integrated. [Phase 8](phases/08-unified-operations-dashboard-judge-verification-suite/08-01-SUMMARY.md) records the release rehearsal. The [final audit](FINAL-AUDIT.md) records follow-up fixes, regression results, and remaining limits. V00 still needs the official organizer input.
 
 ## Working constraints
 

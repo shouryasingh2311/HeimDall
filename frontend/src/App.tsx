@@ -161,7 +161,7 @@ function Dashboard({ onCredentialsChanged }: { onCredentialsChanged: () => void 
               isFixtureMode={isFixtureMode}
               onInspectPayload={handleInspectPayload}
             />
-            <TransitionsView isFixtureMode={isFixtureMode} />
+            <TransitionsView key={String(isFixtureMode)} isFixtureMode={isFixtureMode} />
             {!isFixtureMode && <BenchmarkPanel />}
           </div>
         )}
@@ -204,6 +204,7 @@ function Dashboard({ onCredentialsChanged }: { onCredentialsChanged: () => void 
             className="tab-pane"
           >
             <ScenarioResultsView
+              key={String(isFixtureMode)}
               isFixtureMode={isFixtureMode}
               onInspectPayload={handleInspectPayload}
               onSelectIncident={handleSelectIncident}

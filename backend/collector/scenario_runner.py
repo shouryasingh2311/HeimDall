@@ -11,7 +11,7 @@ from backend.collector.command_runner import NODE
 from backend.collector.demo_source import RawEvent
 from backend.collector.transport import DELIVERY_ERRORS
 from backend.shared.models import MetadataPayload, parse_utc, utc_now, utc_text
-from backend.shared.scenarios import ScenarioResult
+from backend.shared.scenarios import ScenarioResult, scenario_timeout
 
 LOG = logging.getLogger("heimdal.collector")
 MARKER = "synthetic-phase7-local-secret"
@@ -80,12 +80,8 @@ class ScenarioRunner:
         checks, ids, incidents, duplicate = {}, [], [], 0
         reason = None
         try:
-            if result.scenario_id == 8:
-                async with asyncio.timeout(180):
-                    checks, ids, incidents, duplicate = await methods[7]()
-            else:
-                async with asyncio.timeout(65):
-                    checks, ids, incidents, duplicate = await methods[result.scenario_id - 1]()
+            async with asyncio.timeout(scenario_timeout(result.scenario_id)):
+                checks, ids, incidents, duplicate = await methods[result.scenario_id - 1]()
             status = "passed" if checks and all(checks.values()) else "failed"
             reason = "evidence_mismatch" if status == "failed" else None
         except TimeoutError:
