@@ -237,7 +237,7 @@ monitor/
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/monitor.git
+git clone https://github.com/shouryasingh2311/HeimDall.git
 cd monitor
 
 # Backend setup (Python virtual environment)
@@ -247,8 +247,8 @@ python -m venv .venv
 # Linux/macOS:
 source .venv/bin/activate
 
-# Install backend dependencies
-pip install -r requirements.txt
+# Install locked dependencies
+pip install -r requirements.lock
 
 # Frontend setup
 cd frontend
@@ -256,28 +256,43 @@ npm install
 cd ..
 ```
 
-### 2. Generate Development TLS Certificates
-To maintain realistic zero-compromise security, collector-to-SaaS communication requires valid TLS with CA verification:
+### 2. Bootstrap Local Certificates & Credentials
+Cicada enforces strict verified TLS and cryptographic tokens. Run the security bootstrap tool to generate the local development CA, localhost SAN certificates, and tenant credentials in the ignored `.cicada/dev/` directory:
 ```bash
-python scripts/security/generate_certs.py
+python -m scripts.security.bootstrap
 ```
-This generates a local development CA and localhost SAN certificates inside `certs/`.
+This provisions:
+* CA root (`.cicada/dev/ca.pem`) and server certificates (`saas.crt`, `saas.key`).
+* Tenant Alpha credentials: `.cicada/dev/collector-alpha.json` and `.cicada/dev/operator-alpha.json`.
+* Tenant Beta credentials: `.cicada/dev/collector-beta.json` and `.cicada/dev/operator-beta.json`.
+
+To export OpenAPI schemas and synthetic fixtures for frontend development:
+```bash
+python -m scripts.security.export_contracts
+```
 
 ### 3. Running Central SaaS Service
+Start the central SaaS platform over verified HTTPS:
 ```bash
-uvicorn backend.saas.main:app --host 127.0.0.1 --port 8443 --ssl-keyfile certs/saas.key --ssl-certfile certs/saas.crt
+python -m backend.saas.main
 ```
-* SaaS API runs at: `https://127.0.0.1:8443`
-* Health probe: `https://127.0.0.1:8443/healthz`
+* SaaS API runs at: `https://localhost:8443`
+* Public Health check: `https://localhost:8443/healthz`
+* Query fleet status with generated operator credentials:
+  ```powershell
+  $operator = Get-Content -Raw .cicada/dev/operator-alpha.json | ConvertFrom-Json
+  curl.exe --cacert .cicada/dev/ca.pem -H "Authorization: Bearer $($operator.token)" -H "X-Tenant-ID: $($operator.tenant_id)" https://localhost:8443/api/v1/fleet
+  ```
 
 ### 4. Running the Local Collector
-In a separate terminal:
+In a separate terminal, start the local collector daemon:
 ```bash
-# Start Collector for Tenant Alpha
-python -m backend.collector.daemon --tenant tenant-alpha --port 9001
+python -m backend.collector.daemon
 ```
-* Loopback Egress Proof Panel: `http://127.0.0.1:9001/`
-* Local Status API: `http://127.0.0.1:9001/api/local/status`
+* To run for Tenant Beta: `python -m backend.collector.daemon --tenant beta`
+* To run a single batch and exit: `python -m backend.collector.daemon --once`
+* To ingest local JSONL logs: `python -m backend.collector.daemon --input path/to/events.jsonl`
+* **Local Egress Proof Panel:** Open `http://localhost:9001/audit` in your browser. Enter the `local_token` from `.cicada/dev/collector-alpha.json` to inspect the raw input preview, sanitized outbound bytes, and matching SaaS receipt.
 
 ### 5. Running the Operations Dashboard
 In a third terminal:
@@ -286,6 +301,11 @@ cd frontend
 npm run dev
 ```
 * Dashboard UI: `http://localhost:5173`
+* Alternatively, build the static UI and let SaaS serve it directly:
+  ```bash
+  cd frontend && npm run build && cd ..
+  python -m backend.saas.main --dashboard frontend/dist
+  ```
 
 ### 6. Running Validation Suite
 ```bash
@@ -303,6 +323,7 @@ python -m pytest tests/scenarios
 Comprehensive documentation is organized across dedicated guides:
 
 * 📘 [Architecture & Trust Boundaries](file:///c:/Users/Safa%20Asmi/Documents/GitHub/monitor/docs/ARCHITECTURE.md) — Exhaustive network flow, encryption protocols, and transactional outbox mechanics.
+* 🚀 [Phase 1 Runbook](file:///c:/Users/Safa%20Asmi/Documents/GitHub/monitor/docs/PHASE1.md) — Detailed instructions for running and validating the Phase 1 core architecture and secure transport.
 * 📕 [REST API Reference](file:///c:/Users/Safa%20Asmi/Documents/GitHub/monitor/docs/API.md) — Complete endpoint catalog for both SaaS and Local Collector services.
 * 📗 [Judge Evaluation Runbook](file:///c:/Users/Safa%20Asmi/Documents/GitHub/monitor/docs/RUNBOOK.md) — Step-by-step walkthrough for verifying each of the 8 hackathon scenarios.
 * 📙 [Developer & Contributing Guide](file:///c:/Users/Safa%20Asmi/Documents/GitHub/monitor/docs/CONTRIBUTING.md) — Team git workflow, code ownership boundaries, and testing rules.
@@ -318,7 +339,7 @@ The project is structured for a 3-member parallel development workflow:
 | Role | Member | Focus Areas & Owned Files |
 |---|---|---|
 | **M1: Lead / Core** | Project Lead | Architecture, shared Pydantic models (`backend/shared/**`), security sanitizer, outbox persistence, SaaS API (`backend/saas/**`), AIOps detector, and integration. |
-| **M2: Operations Dashboard** | Frontend Teammate | React 18 / Vite client (`frontend/**`), fleet health widgets, egress receipt inspector, incident views, and render-to-frame latency timing. |
+| **M2: Operations Dashboard** | Frontend Teammate | React 19 / Vite client (`frontend/**`), fleet health widgets, egress receipt inspector, incident views, and render-to-frame latency timing. |
 | **M3: Validation & Adapters** | Validation Teammate | Organizer telemetry adapters (`backend/collector/adapters/**`), pure demo source, local HTML proof UI, 8 scenario harnesses (`tests/scenarios/**`), and runbook. |
 
 ---
@@ -326,9 +347,16 @@ The project is structured for a 3-member parallel development workflow:
 ## Status & Limitations
 
 ### Current Status
-* **Phase:** Planning revision complete.
-* **Application Runtime:** Awaiting implementation build.
-* **Scenarios Verified:** 0 / 8.
+* **Phase:** Phase 1 (Core Architecture & Secure Transport) & Phase 2 (Local Privacy Pipeline & Egress Matcher) **IMPLEMENTED & MERGED** on `main`.
+* **Gates Achieved:**
+  * **Gate G0 (Contracts Frozen):** Pydantic v2 nested models, strict schemas, and OpenAPI exports finalized.
+  * **Gate G1 (End-to-End Ingest & Live Render):** End-to-end telemetry receipt verified from local collector to central SaaS and rendered in browser harness.
+* **Application Runtime:** Functional Two-Tier runtime (FastAPI HTTPS SaaS, loopback Collector daemon, local HTML proof inspector, React 19 / Vite dashboard).
+* **Checks Passed:**
+  * `V01` (Verified TLS 1.3, CA enforcement, wrong hostname/token rejection).
+  * `V02` (Tenant isolation on ingest and fleet queries).
+  * `V03` (Zero-egress SHA-256 wire digest matching).
+* **Pending External Inputs:** Official organizer telemetry stream format pending (currently operating on verified `DEMO_FALLBACK`).
 
 ### Scoped Boundaries (Hackathon vs. Production)
 * **Single-Process SQLite:** The prototype uses SQLite WAL/FULL for bulletproof local durability without multi-container operational complexity (no Kafka or Redis required for hackathon validation).
