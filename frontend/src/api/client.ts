@@ -1,5 +1,5 @@
 /**
- * Cicada SaaS Dashboard API Client
+ * Heimdal SaaS Dashboard API Client
  * Strictly follows .planning/CONTRACTS.md.
  * 
  * Rules:
@@ -44,7 +44,7 @@ export class ApiError extends Error {
   }
 }
 
-export class CicadaApiClient {
+export class HeimdalApiClient {
   private config: ApiClientConfig;
   private renderedPayloadKeys = new Set<string>();
   private activeControllers = new Map<string, AbortController>();
@@ -284,4 +284,4 @@ export class CicadaApiClient {
 }
 
 // Global singleton instance for UI usage
-export const apiClient = new CicadaApiClient();
+export const apiClient = new HeimdalApiClient();

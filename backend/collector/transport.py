@@ -11,6 +11,7 @@ from pydantic import ValidationError
 from backend.shared.config import CollectorSettings
 from backend.shared.models import CollectorHeartbeat, IngestReceipt, MetadataPayload, StrictModel, canonical_bytes
 from backend.shared.remediation import CommandResult, DemoCommand
+from backend.shared.scenarios import ScenarioProbe, ScenarioResult
 
 
 class ReceiptMismatch(Exception):
@@ -31,6 +32,7 @@ class Transport:
                 or endpoint.query or endpoint.fragment or endpoint.path not in ("", "/")):
             raise ValueError("SaaS endpoint must be an HTTPS origin")
         self.region = settings.region
+        self.pause_metadata = False
         self.client = httpx.AsyncClient(
             base_url=settings.saas_url, verify=ssl.create_default_context(cafile=str(ca_file)),
             trust_env=False, follow_redirects=False, timeout=5,
@@ -48,6 +50,8 @@ class Transport:
         await self.client.__aexit__(*exc)
 
     async def send(self, payload: MetadataPayload, approved: bytes) -> IngestReceipt:
+        if self.pause_metadata:
+            raise httpx.ConnectError("Demo metadata outage")
         response = await self.client.post(f"/api/v1/ingest/{self.region}", content=approved)
         response.raise_for_status()
         receipt = IngestReceipt.model_validate_json(response.content)
@@ -66,4 +70,14 @@ class Transport:
 
     async def command_result(self, command_id: str, result: CommandResult) -> None:
         response = await self.client.post(f"/api/v1/collector/commands/{command_id}/result", content=canonical_bytes(result))
+        response.raise_for_status()
+
+    async def observe_scenario(self, ids: list[str]):
+        probe = ScenarioProbe(payload_uuids=ids)
+        response = await self.client.post("/api/v1/collector/scenario-evidence", content=canonical_bytes(probe))
+        response.raise_for_status()
+        return response.json()
+
+    async def report_scenario(self, result: ScenarioResult):
+        response = await self.client.post("/api/v1/scenario-results", content=canonical_bytes(result))
         response.raise_for_status()

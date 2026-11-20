@@ -94,7 +94,7 @@ def test_demo_approval_recovery_restart_and_rollback(service, tmp_path):
             resumed = wait_until(lambda: memory("applied", 60, 70, restart))
             assert resumed["payload_uuid"] != recovered["payload_uuid"]
             wait_until(lambda: status()["status"] == "resolved")
-            if os.getenv("CICADA_TEST_DASHBOARD"):
+            if os.getenv("HEIMDAL_TEST_DASHBOARD"):
                 verify_dashboard_action(client, viewer, action["action_id"])
             else:
                 assert client.post(action_path + "/rollback", headers=viewer).json()["status"] in {"rollback_pending", "rolled_back"}
@@ -205,7 +205,7 @@ def verify_dashboard_action(client, viewer, action_id):
     from playwright.sync_api import expect, sync_playwright
 
     origin = str(client.base_url).rstrip("/")
-    with sync_playwright() as playwright, playwright.chromium.launch(channel=os.getenv("CICADA_TEST_BROWSER")) as browser:
+    with sync_playwright() as playwright, playwright.chromium.launch(channel=os.getenv("HEIMDAL_TEST_BROWSER")) as browser:
         page = browser.new_page()
 
         def forward(route):

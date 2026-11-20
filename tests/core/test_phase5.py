@@ -140,7 +140,7 @@ def test_statistical_control_and_related_unrelated_incidents(service):
     ingest("lb-01", 10, packet_loss_pct=0.)
     assert client.get(evidence_url, headers=viewer).json()["status"] == "resolved"
 
-    if os.getenv("CICADA_TEST_DASHBOARD"):
+    if os.getenv("HEIMDAL_TEST_DASHBOARD"):
         verify_incident_dashboard(client, viewer, loss.payload_uuid)
 
 
@@ -237,7 +237,7 @@ def verify_incident_dashboard(client, viewer, uuid):
     from playwright.sync_api import expect, sync_playwright
 
     origin = str(client.base_url).rstrip("/")
-    with sync_playwright() as playwright, playwright.chromium.launch(channel=os.getenv("CICADA_TEST_BROWSER")) as browser:
+    with sync_playwright() as playwright, playwright.chromium.launch(channel=os.getenv("HEIMDAL_TEST_BROWSER")) as browser:
         page = browser.new_page()
 
         def forward(route):

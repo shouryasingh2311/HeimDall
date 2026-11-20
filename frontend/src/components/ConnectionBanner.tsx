@@ -26,10 +26,10 @@ export const ConnectionBanner: React.FC<ConnectionBannerProps> = ({
   isLoading,
 }) => {
   return (
-    <header className="cicada-header">
+    <header className="heimdal-header">
       <div className="header-top-row">
         <div className="brand-section">
-          <span className="brand-badge">CICADA</span>
+          <span className="brand-badge">HEIMDAL</span>
           <h1 className="system-title">Operations & Fleet Monitoring</h1>
           <button
             type="button"

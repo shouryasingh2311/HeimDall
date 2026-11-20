@@ -14,7 +14,7 @@ from backend.shared.config import CollectorSettings
 from backend.shared.models import canonical_bytes
 from backend.shared.remediation import MAX_CAPACITY, CommandResult, DemoCommand, scaled_capacity
 
-LOG = logging.getLogger("cicada.collector")
+LOG = logging.getLogger("heimdal.collector")
 NODE = "api-01"
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS capacity (source_id TEXT PRIMARY KEY, capacity_mb INTEGER NOT NULL);

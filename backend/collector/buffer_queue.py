@@ -85,6 +85,10 @@ class Outbox:
         row = rows[0]
         return row["total"] - row["quarantined"], row["quarantined"]
 
+    async def pending_ids(self) -> list[str]:
+        rows = await self.db.execute_fetchall("SELECT payload_uuid FROM outbox WHERE quarantine_reason IS NULL")
+        return [row[0] for row in rows]
+
     async def quarantined(self):
         rows = await self.db.execute_fetchall(
             """SELECT payload_uuid, quarantine_reason, attempts FROM outbox

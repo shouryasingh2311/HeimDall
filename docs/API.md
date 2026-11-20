@@ -1,4 +1,4 @@
-# Cicada REST API Specification
+# Heimdal REST API Specification
 
 This specification documents all public and internal REST endpoints across both the **Tier 1 Customer Local Collector** and the **Tier 2 Central SaaS Platform**.
 
@@ -19,30 +19,16 @@ Requires the same local session token. Returns an `items` array with up to 20 re
 Each entry includes `payload_uuid`, `policy_version`, `raw_preview` (local text with known credentials masked, or null), `approved_body` (exact outbound JSON as a string), `body_sha256`, `state`, and `receipt` (null until acknowledged). The preview buffer retains up to 500 entries for 15 minutes.
 
 ### 3. POST `/api/local/scenarios/{id}`
-Triggers an automated scenario injection on the local demo source.
 
-* **Path Parameters:** `id` (int, 1 to 8)
-* **Request Body:**
-  ```json
-  {
-    "run_id": "run-20261120-001",
-    "seed": 42
-  }
-  ```
-* **Response Body (`200 OK`):**
-  ```json
-  {
-    "status": "injected",
-    "scenario_id": 1,
-    "run_id": "run-20261120-001"
-  }
-  ```
+Available only with the collector's `--scenarios` flag and the local session token. Use a scenario number from 1 to 8. The runner generates a fresh run UUID and returns `202 Accepted` with the `running` status.
+
+`GET /api/local/scenarios` returns the current result and whether its summary is waiting to publish. `POST /api/local/reset` clears demo inputs when the outbox and demo actions are settled. Both require the same local token.
 
 ---
 
 ## Tier 2: Central SaaS Platform APIs
 
-The central platform operates on `https://127.0.0.1:8443` (TLS 1.3). All endpoints except `/healthz` require Bearer token authentication in the `Authorization` header.
+The central platform operates on `https://127.0.0.1:8443`. All endpoints except `/healthz` require Bearer token authentication in the `Authorization` header.
 
 ### 1. Ingestion Endpoints
 

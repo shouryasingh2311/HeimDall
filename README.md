@@ -1,8 +1,6 @@
-<p align="center">
-  <img src="assets/banner.png" alt="HeimDall Observability Platform" width="650" />
-</p>
+# Heimdal: Privacy-Preserving Observability and AIOps Platform
 
-# HeimDall: Privacy-Preserving Observability and AIOps Platform
+Built for the CICADA 2026 hackathon.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python: 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
@@ -10,7 +8,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-green.svg)](https://fastapi.tiangolo.com/)
 [![SQLite: WAL](https://img.shields.io/badge/SQLite-WAL%20%7C%20FULL-lightgrey.svg)](https://sqlite.org/)
 
-Cicada is an AIOps observability platform designed to monitor distributed services without sending raw logs, credentials, or sensitive customer records across network boundaries.
+Heimdal is an AIOps observability platform designed to monitor distributed services without sending raw logs, credentials, or sensitive customer records across network boundaries.
 
 > Quick links: [Run Phase 1 locally](docs/PHASE1.md) · [Member 1 Lead](.planning/MEMBER_1_LEAD.md) · [Member 2 Dashboard](.planning/MEMBER_2_DASHBOARD.md) · [Member 3 Validation](.planning/MEMBER_3_VALIDATION.md) · [Contracts](.planning/CONTRACTS.md) · [Architecture](.planning/ARCHITECTURE.md)
 
@@ -154,7 +152,7 @@ The test harness exercises all 8 evaluation scenarios:
 ## Technology Stack
 
 ```
-               CICADA TECHNOLOGY STACK
+               HEIMDAL TECHNOLOGY STACK
 ┌────────────────────────────────────────────────────────┐
 │                        FRONTEND                        │
 │  React 19  │  TypeScript  │  Vite  │  Plain CSS / SVG  │
@@ -257,14 +255,14 @@ cd ..
 ```
 
 ### 2. Bootstrap Local Certificates & Credentials
-Cicada enforces TLS and cryptographic tokens. Run the security bootstrap tool to generate the local development CA, localhost SAN certificates, and tenant credentials in `.cicada/dev/`:
+Heimdal enforces TLS and cryptographic tokens. Run the security bootstrap tool to generate the local development CA, localhost SAN certificates, and tenant credentials in `.heimdal/dev/`:
 ```bash
 python -m scripts.security.bootstrap
 ```
 This provisions:
-* CA root (`.cicada/dev/ca.pem`) and server certificates (`saas.crt`, `saas.key`).
-* Tenant Alpha credentials: `.cicada/dev/collector-alpha.json` and `.cicada/dev/operator-alpha.json`.
-* Tenant Beta credentials: `.cicada/dev/collector-beta.json` and `.cicada/dev/operator-beta.json`.
+* CA root (`.heimdal/dev/ca.pem`) and server certificates (`saas.crt`, `saas.key`).
+* Tenant Alpha credentials: `.heimdal/dev/collector-alpha.json` and `.heimdal/dev/operator-alpha.json`.
+* Tenant Beta credentials: `.heimdal/dev/collector-beta.json` and `.heimdal/dev/operator-beta.json`.
 
 To export OpenAPI schemas and synthetic fixtures for frontend development:
 ```bash
@@ -280,8 +278,8 @@ python -m backend.saas.main
 * Public health check: `https://localhost:8443/healthz`
 * Query fleet status with generated operator credentials:
   ```powershell
-  $operator = Get-Content -Raw .cicada/dev/operator-alpha.json | ConvertFrom-Json
-  curl.exe --cacert .cicada/dev/ca.pem -H "Authorization: Bearer $($operator.token)" -H "X-Tenant-ID: $($operator.tenant_id)" https://localhost:8443/api/v1/fleet
+  $operator = Get-Content -Raw .heimdal/dev/operator-alpha.json | ConvertFrom-Json
+  curl.exe --cacert .heimdal/dev/ca.pem -H "Authorization: Bearer $($operator.token)" -H "X-Tenant-ID: $($operator.tenant_id)" https://localhost:8443/api/v1/fleet
   ```
 
 ### 4. Running the Local Collector
@@ -292,7 +290,7 @@ python -m backend.collector.daemon
 * To run for Tenant Beta: `python -m backend.collector.daemon --tenant beta`
 * To run a single batch and exit: `python -m backend.collector.daemon --once`
 * To ingest local JSONL logs: `python -m backend.collector.daemon --input path/to/events.jsonl`
-* Local Egress Proof Panel: Open `http://localhost:9001/audit` in your browser. Enter the `local_token` from `.cicada/dev/collector-alpha.json` to inspect the raw input preview, sanitized outbound bytes, and matching SaaS receipt.
+* Local Egress Proof Panel: Open `http://localhost:9001/audit` in your browser. Enter the `local_token` from `.heimdal/dev/collector-alpha.json` to inspect the raw input preview, sanitized outbound bytes, and matching SaaS receipt.
 
 ### 5. Running the Operations Dashboard
 In a third terminal:

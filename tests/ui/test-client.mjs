@@ -248,7 +248,7 @@ class ApiError extends Error {
   }
 }
 
-class CicadaApiClientTestable {
+class HeimdalApiClientTestable {
   constructor(config = {}) {
     this.config = {
       baseUrl: config.baseUrl || 'http://localhost:8000',
@@ -376,9 +376,9 @@ class CicadaApiClientTestable {
 }
 
 async function runAllChecks() {
-  console.log('--- Starting Cicada Dashboard UI Verification Checks (Phases 1–8) ---');
+  console.log('--- Starting Heimdal Dashboard UI Verification Checks (Phases 1–8) ---');
 
-  const client = new CicadaApiClientTestable();
+  const client = new HeimdalApiClientTestable();
 
   // Test 1: First visible render recording
   console.log('Check 1: First visible render records once...');

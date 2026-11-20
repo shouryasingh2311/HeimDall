@@ -80,7 +80,7 @@ def service(tmp_path):
     runtime, port, local_port = tmp_path / "runtime", free_port(), free_port()
     bootstrap(runtime, port, local_port)
     tls = ssl.create_default_context(cafile=str(runtime / "ca.pem"))
-    dashboard = os.getenv("CICADA_TEST_DASHBOARD")
+    dashboard = os.getenv("HEIMDAL_TEST_DASHBOARD")
     args = ["--runtime", runtime, "--port", port]
     if dashboard:
         args += ["--dashboard", Path(dashboard).resolve()]
@@ -195,7 +195,7 @@ def test_live_collector_privacy_and_browser_slice(service, tmp_path):
                     "/api/local/audit", params={"payload_uuid": payload.payload_uuid}, headers=local_headers,
                 ).json()["items"][0]
                 assert local_match == latest
-                if os.getenv("CICADA_TEST_DASHBOARD"):
+                if os.getenv("HEIMDAL_TEST_DASHBOARD"):
                     verify_dashboard(client, app_headers, local, local_headers, local_match)
 
 
@@ -205,7 +205,7 @@ def verify_dashboard(client, app_headers, local, local_headers, proof):
     # Forward through a CA-verified client without rewriting browser credentials.
     origin = str(client.base_url).rstrip("/")
     with sync_playwright() as playwright:
-        channel = os.getenv("CICADA_TEST_BROWSER")
+        channel = os.getenv("HEIMDAL_TEST_BROWSER")
         browser = playwright.chromium.launch(channel=channel)
         with browser:
             page = browser.new_page()

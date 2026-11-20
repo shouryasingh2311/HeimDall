@@ -1,4 +1,4 @@
-/* Cicada Operations Dashboard - Production High-Contrast Theme */
+/* Heimdal Operations Dashboard - Production High-Contrast Theme */
 :root {
   --bg-app: #0b0f17;
   --bg-surface: #121824;
@@ -74,14 +74,14 @@ body {
 }
 
 /* App Shell */
-.cicada-app-shell {
+.heimdal-app-shell {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
 
 /* Header */
-.cicada-header {
+.heimdal-header {
   background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border-subtle);
   padding: 12px 24px;
@@ -343,7 +343,7 @@ body {
 }
 
 /* Main Content Area */
-.cicada-main-content {
+.heimdal-main-content {
   flex: 1;
   padding: 24px;
 }
@@ -1106,7 +1106,7 @@ body {
 }
 
 /* Footer */
-.cicada-footer {
+.heimdal-footer {
   background-color: var(--bg-surface);
   border-top: 1px solid var(--border-subtle);
   padding: 12px 24px;

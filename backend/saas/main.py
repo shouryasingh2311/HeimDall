@@ -23,7 +23,9 @@ from backend.saas import benchmark
 from backend.saas.health import HealthMonitor
 from backend.saas.incidents import IncidentEngine
 from backend.saas.remediation import Remediation, public_action
+from backend.saas import scenario_evidence
 from backend.shared.remediation import CommandResult
+from backend.shared.scenarios import ScenarioProbe, ScenarioResult
 from backend.saas.storage import PayloadConflict, Storage
 from backend.shared.config import Credential, ServerSettings, read_settings
 from backend.shared.models import (
@@ -106,7 +108,7 @@ def create_app(settings: ServerSettings, db_path: Path, dashboard: Path | None =
                     await watchdog
 
     app = FastAPI(
-        title="Cicada Metadata API", version="0.1.0", lifespan=lifespan,
+        title="Heimdal Metadata API", version="0.1.0", lifespan=lifespan,
         openapi_url=None, docs_url=None, redoc_url=None,
     )
     app.router.route_class = BoundedJSONRoute
@@ -280,6 +282,23 @@ def create_app(settings: ServerSettings, db_path: Path, dashboard: Path | None =
     ):
         return await request.app.state.remediation.complete(credential, command_id, result)
 
+    @app.post("/api/v1/scenario-results")
+    async def report_scenario(
+        result: ScenarioResult, credential: Credential = Depends(collector), storage: Storage = Depends(store),
+    ):
+        await scenario_evidence.save(storage, credential, result)
+        return {"accepted": True}
+
+    @app.get("/api/v1/scenario-results")
+    async def scenario_results(credential: Credential = Depends(operator), storage: Storage = Depends(store)):
+        return await scenario_evidence.latest(storage, credential.tenant_id)
+
+    @app.post("/api/v1/collector/scenario-evidence")
+    async def observe_scenario(
+        probe: ScenarioProbe, credential: Credential = Depends(collector), storage: Storage = Depends(store),
+    ):
+        return await scenario_evidence.observe(storage, credential, probe.payload_uuids)
+
     @app.get("/api/v1/benchmarks")
     async def benchmarks(
         credential: Credential = Depends(operator), storage: Storage = Depends(store),
@@ -303,9 +322,9 @@ def create_app(settings: ServerSettings, db_path: Path, dashboard: Path | None =
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--runtime", type=Path, default=Path(os.getenv("CICADA_RUNTIME", ".cicada/dev")))
+    parser.add_argument("--runtime", type=Path, default=Path(os.getenv("HEIMDAL_RUNTIME", ".heimdal/dev")))
     parser.add_argument("--port", type=int, default=8443)
-    parser.add_argument("--dashboard", type=Path, default=os.getenv("CICADA_DASHBOARD_DIR"))
+    parser.add_argument("--dashboard", type=Path, default=os.getenv("HEIMDAL_DASHBOARD_DIR"))
     args = parser.parse_args()
     app = create_app(read_settings(args.runtime / "saas.json", ServerSettings),
                      args.runtime / "saas.sqlite", args.dashboard)

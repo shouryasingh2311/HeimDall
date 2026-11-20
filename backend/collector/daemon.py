@@ -20,12 +20,13 @@ from backend.collector.demo_source import DemoSource, RawEvent
 from backend.collector.drainer import Drainer
 from backend.collector.inspector import AuditPreview, create_inspector
 from backend.collector.sanitizer import Sanitizer
+from backend.collector.scenario_runner import ScenarioRunner
 from backend.collector.security_analyzer import QueueFull, SecurityAnalyzer
 from backend.collector.transport import DELIVERY_ERRORS, Transport
 from backend.shared.config import CollectorSettings, read_settings
 from backend.shared.models import CollectorHeartbeat, canonical_bytes, utc_now, utc_text
 
-LOG = logging.getLogger("cicada.collector")
+LOG = logging.getLogger("heimdal.collector")
 
 
 class Collector:
@@ -109,7 +110,7 @@ class Collector:
                 LOG.warning("Heartbeat failed (%s)", type(error).__name__)
             await asyncio.sleep(10)
 
-    async def events(self, args, generator: DemoSource):
+    async def events(self, args, generator: DemoSource, scenarios: ScenarioRunner | None = None):
         if args.input is not None or args.organizer is not None:
             path = args.input or args.organizer
             if not path.is_file():
@@ -133,6 +134,9 @@ class Collector:
 
         LOG.info("Input mode: DEMO_FALLBACK")
         while True:
+            if scenarios and scenarios.active:
+                await asyncio.sleep(.2)
+                continue
             accepted = True
             for event in generator.generate_tick(tenants=[self.settings.tenant_id]):
                 event = replace(event, collector_id=self.settings.collector_id)
@@ -155,8 +159,9 @@ async def run(args, settings: CollectorSettings) -> bool:
         collector = Collector(settings, transport, audit, outbox)
         generator = DemoSource()
         runner = None
-        if args.demo_memory_pressure:
-            generator.memory_demand_pct[NODE] = 98.
+        if args.demo_memory_pressure or args.scenarios:
+            if args.demo_memory_pressure:
+                generator.memory_demand_pct[NODE] = 98.
             runner = await stack.enter_async_context(
                 CommandRunner.open(args.runtime / f"demo-{scope}.sqlite3", settings, generator),
             )
@@ -183,14 +188,15 @@ async def run(args, settings: CollectorSettings) -> bool:
                     LOG.error("Timed out waiting for delivery; committed records remain in the outbox")
                     return False
 
-        app = create_inspector(settings, audit, collector.queue_status)
+        scenarios = ScenarioRunner(collector, generator) if args.scenarios else None
+        app = create_inspector(settings, audit, collector.queue_status, scenarios)
         inspector_lifespan = app.router.lifespan_context
 
         @asynccontextmanager
         async def lifespan(app):
             async def read_events():
                 try:
-                    if not await collector.events(args, generator):
+                    if not await collector.events(args, generator, scenarios):
                         LOG.error("Input run failed. See local collector diagnostics.")
                 except (OSError, UnicodeError) as error:
                     LOG.error("Input could not be read (%s)", type(error).__name__)
@@ -198,8 +204,14 @@ async def run(args, settings: CollectorSettings) -> bool:
             jobs = [collector.drainer.run(), collector.send_heartbeats(), read_events()]
             if runner:
                 jobs.append(runner.run(transport))
+            if scenarios:
+                jobs.append(scenarios.flush())
             async with inspector_lifespan(app), workers(*jobs):
-                yield
+                try:
+                    yield
+                finally:
+                    if scenarios:
+                        await scenarios.close()
 
         app.router.lifespan_context = lifespan
         server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=settings.local_port, proxy_headers=False))
@@ -209,19 +221,20 @@ async def run(args, settings: CollectorSettings) -> bool:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--runtime", type=Path, default=Path(".cicada/dev"))
+    parser.add_argument("--runtime", type=Path, default=Path(".heimdal/dev"))
     parser.add_argument("--tenant", choices=["alpha", "beta"], default="alpha")
     source = parser.add_mutually_exclusive_group()
     source.add_argument("--input", type=Path, help="Local RawEvent JSONL file")
     source.add_argument("--organizer", type=Path, help="Organizer JSONL file")
     source.add_argument("--demo-memory-pressure", action="store_true", help="Enable the isolated memory simulation")
+    source.add_argument("--scenarios", action="store_true", help="Enable the local synthetic scenario runner")
     parser.add_argument("--once", action="store_true", help="Send one batch or file and exit")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     logging.getLogger("httpx").setLevel(logging.WARNING)
     settings = read_settings(args.runtime / f"collector-{args.tenant}.json", CollectorSettings)
-    if args.demo_memory_pressure and (args.once or not settings.demo_memory_source):
-        parser.error("The memory simulation requires a continuous collector and a Phase 6 demo runtime")
+    if (args.demo_memory_pressure or args.scenarios) and (args.once or not settings.demo_memory_source):
+        parser.error("Demo controls require a continuous collector and a configured demo runtime")
     raise SystemExit(0 if asyncio.run(run(args, settings)) else 1)
 
 

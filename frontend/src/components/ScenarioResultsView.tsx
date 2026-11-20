@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import type { ScenarioResult } from '../types/contracts';
 import { apiClient } from '../api/client';
 import { MOCK_SCENARIO_RESULTS } from '../fixtures/metadataFixtures';
@@ -10,14 +10,14 @@ interface ScenarioResultsViewProps {
 }
 
 const SCENARIO_NAMES: Record<number, string> = {
-  1: 'Raw Event Conformance & Adapter Parsing (V01)',
-  2: 'Zero-Egress Secret Redaction & Body SHA-256 Digest (V02, V03)',
-  3: 'Resilient Outage Buffering & Outbox Drain (V04)',
-  4: 'Local Failed-Login Risk Analyzer (V05)',
-  5: 'Network Degradation & Sub-15s Alerting (V06)',
-  6: 'Statistical Baseline Anomaly Detection (V07)',
-  7: 'Alert Storm Correlation & Topology Grouping (V08)',
-  8: 'Deduplication & Temporal UTC Ordering (V09)',
+  1: 'Local secret handling (V03)',
+  2: 'Outage buffering and replay (V04)',
+  3: 'Local failed-login detection (V06)',
+  4: 'Network degradation and alert timing (V07)',
+  5: 'Sustained CPU anomaly (V08)',
+  6: 'Related alerts and unrelated control (V08)',
+  7: 'Duplicate and late delivery (V09)',
+  8: 'Operator-approved simulation and rollback (V11)',
 };
 
 export const ScenarioResultsView: React.FC<ScenarioResultsViewProps> = ({
@@ -31,7 +31,7 @@ export const ScenarioResultsView: React.FC<ScenarioResultsViewProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  const fetchResults = async () => {
+  const fetchResults = useCallback(async () => {
     if (isFixtureMode) {
       setResults(MOCK_SCENARIO_RESULTS);
       setFetchError(null);
@@ -49,11 +49,14 @@ export const ScenarioResultsView: React.FC<ScenarioResultsViewProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [isFixtureMode]);
 
   useEffect(() => {
-    fetchResults();
-  }, [isFixtureMode]);
+    void fetchResults();
+    if (isFixtureMode) return;
+    const timer = window.setInterval(fetchResults, 4000);
+    return () => window.clearInterval(timer);
+  }, [fetchResults, isFixtureMode]);
 
   // Aggregate status metrics
   const passedCount = results.filter((r) => r.status === 'passed').length;
@@ -80,12 +83,11 @@ export const ScenarioResultsView: React.FC<ScenarioResultsViewProps> = ({
 
       {/* Local Runner Isolation Notice */}
       <div className="scenario-info-banner">
-        <strong>Isolated Verification Architecture (Phase 7):</strong> Chaos injection, adapter parsing, and scenario drivers run locally in Member 3&apos;s runner environment.
-        To trigger chaos injection or view raw collector loopback tests, open{' '}
-        <a href="http://localhost:9001/audit" target="_blank" rel="noreferrer" className="external-link">
-          http://localhost:9001/audit
+        Start synthetic inputs from the local collector and return here for the observed results. Open{' '}
+        <a href="http://localhost:9001/scenarios" target="_blank" rel="noreferrer" className="external-link">
+          the local scenario runner
         </a>{' '}
-        in a separate browser window. This central SaaS view displays only verified summary metrics and approved cryptographic digests.
+        in a separate browser window.
       </div>
 
       {/* Aggregate Scoreboard */}
@@ -149,7 +151,7 @@ export const ScenarioResultsView: React.FC<ScenarioResultsViewProps> = ({
 
               <div className="scenario-meta mono text-xs">
                 <div>Run ID: {scen.run_id}</div>
-                <div>Completed: {new Date(scen.finished_at_utc).toLocaleTimeString()} UTC</div>
+                <div>Completed: {scen.finished_at_utc ? new Date(scen.finished_at_utc).toISOString() : 'In progress'}</div>
                 {scen.reason_code && (
                   <div className="verdict-line">Verdict: <strong>{scen.reason_code}</strong></div>
                 )}

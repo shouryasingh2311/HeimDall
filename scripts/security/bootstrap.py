@@ -33,7 +33,7 @@ def issue_certificates(runtime: Path):
     now = utc_now()
     ca_key = ec.generate_private_key(ec.SECP256R1())
     server_key = ec.generate_private_key(ec.SECP256R1())
-    ca_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Cicada Local Demo CA")])
+    ca_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Heimdal Local Demo CA")])
     server_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "localhost")])
 
     def certificate(subject, issuer, key):
@@ -110,7 +110,7 @@ def bootstrap(runtime: Path, saas_port=8443, local_base=9001):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--runtime", type=Path, default=Path(".cicada/dev"))
+    parser.add_argument("--runtime", type=Path, default=Path(".heimdal/dev"))
     parser.add_argument("--saas-port", type=int, default=8443)
     parser.add_argument("--local-port", type=int, default=9001)
     args = parser.parse_args()

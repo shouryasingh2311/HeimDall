@@ -165,7 +165,7 @@ def generate_synthetic_benchmark_dataset(sample_count: int = 120, seed: int = 42
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Cicada Benchmark Timing Engine (V10)")
+    parser = argparse.ArgumentParser(description="Heimdal Benchmark Timing Engine (V10)")
     parser.add_argument("--samples", type=int, default=120, help="Number of benchmark samples to evaluate")
     parser.add_argument("--json", action="store_true", help="Print report as JSON")
     args = parser.parse_args()
@@ -177,7 +177,7 @@ def main():
         import json
         print(json.dumps(report.__dict__, indent=2))
     else:
-        print("\n=== Cicada Benchmark Timing Report (V10 / PERF-01..03) ===")
+        print("\n=== Heimdal Benchmark Timing Report (V10 / PERF-01..03) ===")
         print(f"Run ID:         {report.run_id}")
         print(f"Timestamp:      {report.generated_at_utc}")
         print(f"Cohort:         {report.cohort} (Sample Count: {report.sample_count})")
