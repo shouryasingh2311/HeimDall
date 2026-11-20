@@ -1,6 +1,6 @@
 # Contributing & Development Guide
 
-This guide details working agreements, branch policies, code quality standards, and testing procedures for team members and automated AI collaborators working on **Cicada**.
+This guide details working agreements, branch policies, code quality standards, and testing procedures for team members and automated AI collaborators working on **Heimdal**.
 
 ---
 

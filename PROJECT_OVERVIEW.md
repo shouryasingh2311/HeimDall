@@ -1,4 +1,4 @@
-# Cicada — project idea and team starting guide
+# Heimdal — project idea and team starting guide
 
 ## What are we building?
 

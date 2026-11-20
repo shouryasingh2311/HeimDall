@@ -1,6 +1,6 @@
 # Run Phase 1
 
-These commands use PowerShell from the repository root and keep runtime files in the ignored .cicada directory.
+These commands use PowerShell from the repository root and keep runtime files in the ignored .heimdal directory.
 
     python -m venv .venv
     .venv/Scripts/python -m pip install -r requirements.lock
@@ -24,18 +24,18 @@ To demonstrate recovery, stop SaaS for 30 seconds with the collector running, th
 
 Read the actual SaaS fleet using the generated operator credential. Keep the credential in the local process and out of reports.
 
-    $operator = Get-Content -Raw .cicada/dev/operator-alpha.json | ConvertFrom-Json
-    curl.exe --cacert .cicada/dev/ca.pem -H "Authorization: Bearer $($operator.token)" -H "X-Tenant-ID: $($operator.tenant_id)" https://localhost:8443/api/v1/fleet
+    $operator = Get-Content -Raw .heimdal/dev/operator-alpha.json | ConvertFrom-Json
+    curl.exe --cacert .heimdal/dev/ca.pem -H "Authorization: Bearer $($operator.token)" -H "X-Tenant-ID: $($operator.tenant_id)" https://localhost:8443/api/v1/fleet
 
-Open http://localhost:9001/audit separately. Enter the local_token value from .cicada/dev/collector-alpha.json to inspect the masked local preview, the exact approved outbound bytes, and the SaaS receipt. Paste an optional UUID to retrieve a specific retained record. The local session token and operator token have distinct scopes.
+Open http://localhost:9001/audit separately. Enter the local_token value from .heimdal/dev/collector-alpha.json to inspect the masked local preview, the exact approved outbound bytes, and the SaaS receipt. Paste an optional UUID to retrieve a specific retained record. The local session token and operator token have distinct scopes.
 
 ## Schema and dashboard handoff
 
     .venv/Scripts/python -m scripts.security.export_contracts
 
-Share the generated OpenAPI and synthetic metadata, heartbeat, and receipt examples under .cicada/contracts. They contain no live credentials. Frontend dev CORS accepts only the configured localhost origin. SaaS can serve a React build using --dashboard frontend/dist from the integration checkout. For a direct HTTPS browser run, trust only the locally generated development CA in the browser's trust store after inspecting its source.
+Share the generated OpenAPI and synthetic metadata, heartbeat, and receipt examples under .heimdal/contracts. They contain no live credentials. Frontend dev CORS accepts only the configured localhost origin. SaaS can serve a React build using --dashboard frontend/dist from the integration checkout. For a direct HTTPS browser run, trust only the locally generated development CA in the browser's trust store after inspecting its source.
 
-Build with npm --prefix frontend ci and npm --prefix frontend run build. Start SaaS with --dashboard frontend/dist. In the dashboard enter the tenant ID and token from .cicada/dev/operator-alpha.json and connect. Look up the UUID from the local window, then paste the local SHA-256 digest. Matching digests show agreement for the selected request body. The privacy checks separately inspect SaaS data for forbidden fields and secret markers.
+Build with npm --prefix frontend ci and npm --prefix frontend run build. Start SaaS with --dashboard frontend/dist. In the dashboard enter the tenant ID and token from .heimdal/dev/operator-alpha.json and connect. Look up the UUID from the local window, then paste the local SHA-256 digest. Matching digests show agreement for the selected request body. The privacy checks separately inspect SaaS data for forbidden fields and secret markers.
 
 For the privacy demo, start the alpha collector with --input tests/scenarios/fixtures/secrets.jsonl. Keep it running to inspect the retained records. The fixture timestamps are historical and are unsuitable for live latency claims.
 
@@ -45,7 +45,7 @@ Phase 5 dependency correlation uses the graph in `saas.json`. Bootstrap a new ru
 
     .venv/Scripts/python -m pytest -q
 
-Phase 1 tests exercise actual collector and SaaS processes with temporary certificates and databases. Set CICADA_TEST_DASHBOARD to a built dashboard directory to also verify the receipt renders in a browser. Set CICADA_TEST_BROWSER to msedge or use a Playwright-installed Chromium.
+Phase 1 tests exercise actual collector and SaaS processes with temporary certificates and databases. Set HEIMDAL_TEST_DASHBOARD to a built dashboard directory to also verify the receipt renders in a browser. Set HEIMDAL_TEST_BROWSER to msedge or use a Playwright-installed Chromium.
 
 V00 still needs an actual organizer sample. V02 covers the implemented collector and operator routes, including demo actions.
 
@@ -53,8 +53,8 @@ V00 still needs an actual organizer sample. V02 covers the implemented collector
 
 Use a new runtime to get the demo source permission. Stop any existing SaaS and collector that use ports 8443 and 9001. Run the bootstrap command once, then start SaaS and the collector in separate PowerShell terminals from the repo root.
 
-    .venv/Scripts/python -m scripts.security.bootstrap --runtime .cicada/remediation-demo
-    .venv/Scripts/python -m backend.saas.main --runtime .cicada/remediation-demo --dashboard frontend/dist
-    .venv/Scripts/python -m backend.collector.daemon --runtime .cicada/remediation-demo --demo-memory-pressure
+    .venv/Scripts/python -m scripts.security.bootstrap --runtime .heimdal/remediation-demo
+    .venv/Scripts/python -m backend.saas.main --runtime .heimdal/remediation-demo --dashboard frontend/dist
+    .venv/Scripts/python -m backend.collector.daemon --runtime .heimdal/remediation-demo --demo-memory-pressure
 
-Connect to the dashboard with `.cicada/remediation-demo/operator-alpha.json`. Open **AIOps Incidents & Remediation**, select the memory incident, request a proposal, and click **Approve**. Wait for **Succeeded**, then open the affected source's trends to see new samples drop from about 98% to 65%. The incident resolves after five normal samples. Return to the original incident and click **Rollback**. Wait for **Rolled back** and verify the restored pressure in fresh trend data. The audit log shows each action, actor, and time. Keep the same runtime to show that the capacity and snapshot survive a restart.
+Connect to the dashboard with `.heimdal/remediation-demo/operator-alpha.json`. Open **AIOps Incidents & Remediation**, select the memory incident, request a proposal, and click **Approve**. Wait for **Succeeded**, then open the affected source's trends to see new samples drop from about 98% to 65%. The incident resolves after five normal samples. Return to the original incident and click **Rollback**. Wait for **Rolled back** and verify the restored pressure in fresh trend data. The audit log shows each action, actor, and time. Keep the same runtime to show that the capacity and snapshot survive a restart.

@@ -81,7 +81,7 @@ function Dashboard({ onCredentialsChanged }: { onCredentialsChanged: () => void 
   };
 
   return (
-    <div className="cicada-app-shell">
+    <div className="heimdal-app-shell">
       <ConnectionBanner
         serverStatus={serverStatus}
         error={error}
@@ -141,7 +141,7 @@ function Dashboard({ onCredentialsChanged }: { onCredentialsChanged: () => void 
         </button>
       </nav>
 
-      <main className="cicada-main-content">
+      <main className="heimdal-main-content">
         {activeTab === 'fleet' && (
           <div
             id="panel-fleet"
@@ -212,9 +212,9 @@ function Dashboard({ onCredentialsChanged }: { onCredentialsChanged: () => void 
         )}
       </main>
 
-      <footer className="cicada-footer">
+      <footer className="heimdal-footer">
         <div className="footer-left">
-          <span>Cicada Observability SaaS v1.0.0</span>
+          <span>Heimdal Observability SaaS v1.0.0</span>
           <span>&bull;</span>
           <span>Scope: {apiClient.getTenantId()}</span>
         </div>

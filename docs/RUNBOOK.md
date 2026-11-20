@@ -1,193 +1,46 @@
 # Judge Evaluation and Live Scenario Runbook
 
-Procedures for evaluating, running, and verifying the Cicada observability platform during live review.
+Procedures for evaluating, running, and verifying the Heimdal observability platform during live review.
 
 ---
 
-## 1. Quick Verification Commands
+## 1. Start the live demo
 
-From the project root:
+Build the dashboard once. Stop existing demo processes using ports 8443 or 9001. Use separate PowerShell terminals for SaaS and the collector. Run the bootstrap command once for a new runtime.
 
-```bash
-# 1. Run Core Contracts, Cryptographic & Persistence Tests
-python -m pytest tests/core -v
+    npm --prefix frontend run build
+    .venv/Scripts/python -m scripts.security.bootstrap --runtime .heimdal/scenario-demo
+    .venv/Scripts/python -m backend.saas.main --runtime .heimdal/scenario-demo --dashboard frontend/dist
+    .venv/Scripts/python -m backend.collector.daemon --runtime .heimdal/scenario-demo --scenarios
 
-# 2. Run All 8 Hackathon Scenario Verifiers
-python -m pytest tests/scenarios -v
+Open the loopback runner at http://localhost:9001/scenarios and enter the local token from `.heimdal/scenario-demo/collector-alpha.json`. Open the operator dashboard at https://localhost:8443 and enter the credentials from `.heimdal/scenario-demo/operator-alpha.json`. See [local HTTPS setup](PHASE1.md) if the browser does not trust the development CA.
 
-# 3. Build Frontend & Verify Bundle Integrity
-npm --prefix frontend run build
-```
+## 2. Run the eight CICADA scenarios
 
----
+Start one scenario at a time on the local page and watch **Scenario Verification** in the dashboard. The dashboard reads the latest observed result for each scenario.
 
-## 2. Walkthrough of the 8 Hackathon Scenarios
+| Scenario | What to show |
+|---|---|
+| 1. Local secret handling | Match the payload digest in the local audit and SaaS. The seeded secret is absent from the committed body. |
+| 2. Outage buffering | Metadata sends pause for 30 seconds while the collector queues 75 events. Its verifier checks central absence during the pause and reconciles UUIDs and digests after delivery resumes. |
+| 3. Failed logins | The first four inputs produce no summary. The fifth produces a typed count and a pseudonymous origin. |
+| 4. Network degradation | The generated latency and packet loss produce related alerts. The verifier records whether the alerts appear within 15 seconds. |
+| 5. Sustained CPU anomaly | Show the rolling baseline, the single-spike control, and the alert after two consecutive deviations. |
+| 6. Alert correlation | Two related source alerts share an incident. The worker's alert has a separate incident. |
+| 7. Duplicate and late delivery | The identical body returns a duplicate receipt. The older event is retained as historical. |
+| 8. Simulated remediation | In the incident tab, request a proposal for the memory incident and approve it. Wait for fresh recovery telemetry and incident resolution, then roll back the original action. The runner waits for these observed outcomes, up to three minutes. |
 
-### Scenario 1: Raw Log Contains a Secret (`V03`)
+Use **Reset demo inputs** after pending work settles. It preserves stored evidence, deduplication, and the action audit. Repeating a scenario generates new legitimate payload IDs.
 
-Goal: Verify sensitive data (passwords, tokens, API keys) never leaves the customer environment.
+The CLI reads the real SaaS results and reports missing evidence as blocked.
 
-Execution:
-Start the collector, SaaS, and dashboard as described in [the local runtime guide](PHASE1.md).
+    .venv/Scripts/python -m scripts.verification.run_scenarios --runtime .heimdal/scenario-demo --json
 
-Verification steps:
-1. Open `http://localhost:9001/audit` and enter the collector's local session token.
-2. Fetch a retained record. Check that known credentials are masked in the local preview and that the approved outbound body contains only allowed metadata fields.
-3. Open the dashboard at `https://localhost:8443` and connect with the operator credentials for the collector's tenant.
-4. Look up the payload UUID and paste the SHA-256 digest from the local panel. A match confirms the received body matches the inspected outbound body.
-
----
-
-### Scenario 2: Collector Loses SaaS Connectivity (`V04`)
-
-Goal: Verify zero data loss and resilient buffering during network partitions.
-
-Execution:
-```bash
-python -m scripts.verification.run_scenario --scenario 2 --outage-seconds 30
-```
-
-Verification steps:
-1. The script cuts the HTTPS link between Collector and SaaS for 30 seconds while telemetry continues to generate locally.
-2. Observe the Collector console: exponential backoff triggers (`1s`, `2s`, `4s`, `8s`) and records queue depth in SQLite outbox.
-3. At $T=30\text{s}$, the connection restores.
-4. Observe automatic outbox drain.
-5. The verifier checks:
-   $$\text{Unique Sent UUIDs} \equiv \text{Unique Received UUIDs}$$
-   $$\text{Lost Records} = 0, \quad \text{Duplicate Analytic Records} = 0$$
-
----
-
-### Scenario 3: Repeated Failed Logins (`V06`)
-
-Goal: Detect brute-force authentication attacks locally and export threat summaries without leaking credentials.
-
-Execution:
-```bash
-python -m scripts.verification.run_scenario --scenario 3
-```
-
-Verification steps:
-1. Inject 5 failed login attempts within 10 seconds locally.
-2. Inspect the outbound payload on the local proof panel:
-   ```json
-   {
-     "event_type": "auth_threat",
-     "security": {
-       "failed_attempts_count": 5,
-       "window_seconds": 10,
-       "risk_score": 85,
-       "attacker_id": "hmac_pseudonym_9f8a"
-     }
-   }
-   ```
-3. Confirm that raw usernames, passwords, and source IP addresses are absent from the outbound payload.
-4. Confirm that the SaaS dashboard surfaces a Security Warning incident.
-
----
-
-### Scenario 4: Network Latency Rises (`V07`)
-
-Goal: Detect network degradation and correlate downstream dependency impact.
-
-Execution:
-```bash
-python -m scripts.verification.run_scenario --scenario 4
-```
-
-Verification steps:
-1. The script injects packet loss (15%) and elevated latency (250ms) into `source_id: net-gw-01`.
-2. Observe the dashboard: within $\le 15$ seconds, an alert is raised.
-3. Observe the dependency graph: downstream service `api-service-01` transitions from `Excellent` to `Fair` due to upstream network dependency.
-
----
-
-### Scenario 5: Resource Anomaly (CPU/Memory) (`V08`)
-
-Goal: Trigger statistical anomaly detection without static threshold limits.
-
-Execution:
-```bash
-python -m scripts.verification.run_scenario --scenario 5
-```
-
-Verification steps:
-1. The collector streams warm baseline metrics ($N=20$, CPU $\sim 20\%$).
-2. A sudden spike to $65\%$ is injected (below traditional $80\%$ static threshold).
-3. The rolling z-score detector computes $z = \frac{65 - 20}{4.2} = 10.7 > 3.0$.
-4. The SaaS dashboard flags an Anomaly Incident, displaying:
-   * Observed Value: $65\%$
-   * Baseline Mean ($\mu$): $20\%$
-   * Standard Deviation ($\sigma$): $4.2\%$
-   * Heuristic Evidence Score: $92/100$
-
----
-
-### Scenario 6: Alert Storm Correlation (`V08`)
-
-Goal: Merge related alerts into a single cohesive incident while preserving tenant and topology isolation.
-
-Execution:
-```bash
-python -m scripts.verification.run_scenario --scenario 6
-```
-
-Verification steps:
-1. Inject simultaneous CPU spike, disk latency increase, and downstream HTTP latency across connected components in Tenant Alpha.
-2. Simultaneously inject an independent network alert in Tenant Beta.
-3. Confirm on the SaaS dashboard:
-   * Tenant Alpha displays 1 unified incident containing 3 correlated signals.
-   * Tenant Beta displays an independent, unmerged incident.
-   * Topology grouping isolates alert counts across components.
-
----
-
-### Scenario 7: Duplicate and Out-of-Order Delivery (`V09`)
-
-Goal: Verify idempotent ingestion and chronological event-time trend ordering.
-
-Execution:
-```bash
-python -m scripts.verification.run_scenario --scenario 7
-```
-
-Verification steps:
-1. Inject duplicate payloads with identical `payload_uuid`.
-2. Confirm SaaS database rejects duplicates (`status: duplicate`) without creating duplicate metric entries or re-triggering alerts.
-3. Inject late-arriving packets with timestamp $T - 30\text{min}$.
-4. Confirm that historical charts place the event at $T - 30\text{min}$ in chronological sequence, and current live health is not modified by stale data.
-
----
-
-### Scenario 8: Policy-Guarded Remediation and Snapshot Rollback (`V11`)
-
-Goal: Demonstrate assisted operational remediation with operator approval and rollback safeguards.
-
-Execution:
-```bash
-python -m scripts.verification.run_scenario --scenario 8
-```
-
-Verification steps:
-1. A memory exhaustion incident surfaces a proposed remediation: `SCALE_CONTAINER_MEMORY` ($1.5\times$ factor).
-2. Open the SaaS Dashboard incident view. Notice that execution is blocked pending operator authorization.
-3. Click "Approve Remediation".
-4. The SaaS queues the command; the local collector executes it on the demo target after taking an in-memory snapshot (`memory_limit: 512MB` $\rightarrow$ `768MB`).
-5. Fresh telemetry on the dashboard confirms memory pressure drops from $92\%$ to $61\%$.
-6. Click "Rollback Action" on the dashboard.
-7. Collector restores snapshot (`512MB`); audit log records the complete lifecycle.
-
----
+The default scenario source is synthetic. V00 remains blocked until the official organizer stream is verified. Use the standalone offline watchdog test for the heartbeat requirement. The metadata outage scenario keeps heartbeats running.
 
 ## 3. Real-Time Performance Benchmarking Protocol
 
-To measure Cicada against the evaluation performance criteria:
-
-```bash
-python -m scripts.verification.measure_benchmarks
-```
-
-The script calculates:
+Open **Measured render timing** on the fleet page while sources are visible. The dashboard shows committed observations and reports missing or clock-flagged samples.
 * Collection-to-dashboard latency (p95): evaluates `rendered_at_utc` (captured via `requestAnimationFrame` in React) minus `event_time_utc` (target: $\le 10\text{s}$).
 * Breach-to-alert latency: evaluates alert record creation timestamp minus fault injection timestamp (target: $\le 15\text{s}$).
 * Offline detection delay: evaluates transition to `Poor` timestamp minus heartbeat termination timestamp (target: $\le 60\text{s}$).
@@ -203,10 +56,10 @@ The script calculates:
 > The local proof panel at `http://localhost:9001/audit` shows the exact outbound JSON for inspection. Matching its SHA-256 digest with the SaaS receipt confirms that the inspected bytes match the received bytes.
 
 ### Q3: What happens when SaaS is unreachable?
-> The collector commits every event to an aiosqlite outbox (`PRAGMA synchronous = FULL`, WAL mode) before network send. During an outage, events accumulate safely. The collector uses exponential backoff with jitter (`1s`, `2s`, `4s`, `8s`). Once SaaS is restored, the backlog is drained in order. Deduplication constraints on SaaS ensure zero records are lost and zero duplicates are created.
+> The collector commits approved events to a disk-backed outbox before sending. Retries use exponential backoff and stable payload IDs. In the tested outage, every queued ID and digest matched the committed SaaS evidence after replay.
 
 ### Q4: How does your AIOps distinguish real anomalies from normal spikes?
-> We use a rolling z-score algorithm with an adaptive variance floor ($\sigma_{\text{floor}}$) over a warm-up baseline ($N \ge 10$). A spike only flags if $|z| \ge 3.0$. Single-point fluctuations are categorized as benign unless sustained across consecutive evaluations.
+> The rolling detector warms up on ten samples and needs two consecutive positive z-scores above 3. Fixed severe thresholds can trigger immediately.
 
 ### Q5: What safeguards exist before automated remediation executes?
-> Cicada enforces human-in-the-loop authorization. Actions require operator role authentication, can only target pre-approved demo targets, are rate-limited to 3 per hour, capture an atomic state snapshot before modification, and support single-click rollback.
+> Heimdal enforces human-in-the-loop authorization. Actions require operator role authentication, can only target pre-approved demo targets, are rate-limited to 3 per hour, capture an atomic state snapshot before modification, and support single-click rollback.

@@ -15,7 +15,7 @@ Eight hours; three people. M1 owns heavy core work, M2 UI, M3 inputs/validation/
 | G2 | 3:30 | Privacy, outbox recovery, metadata deduplication and live health verified for tested inputs. |
 | G3 | 5:00 | AIOps, incident evidence, and initial alert, render, and offline timings verified on synthetic inputs. |
 | G4 | 5:45 | [Phase 6](phases/06-autonomous-ops-simulator-policy-guarded-remediation/06-01-SUMMARY.md) verified operator approval, durable execution, recovery telemetry, and simulated rollback. |
-| G5 | 7:00 | Not started |
+| G5 | 7:00 | [Phase 7](phases/07-interactive-chaos-engine-8-live-validation-scenarios/07-01-SUMMARY.md) verifies the eight scenarios on live local services. V00 and final rehearsal remain open. |
 | G6 | 8:00 | Not started |
 
 ## Dependencies and risks

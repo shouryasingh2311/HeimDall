@@ -134,7 +134,7 @@ def test_network_health_history_replay_and_benchmark_ingest(service):
         assert source["health"] == "Poor" and "no_live_telemetry" in source["reason_codes"]
 
 
-@pytest.mark.skipif(not os.getenv("CICADA_TEST_DASHBOARD"), reason="Needs the built dashboard and a browser")
+@pytest.mark.skipif(not os.getenv("HEIMDAL_TEST_DASHBOARD"), reason="Needs the built dashboard and a browser")
 def test_real_dashboard_render_benchmark(service):
     from playwright.sync_api import sync_playwright
 
@@ -142,7 +142,7 @@ def test_real_dashboard_render_benchmark(service):
     viewer = operator(runtime, "alpha")
     origin = str(client.base_url).rstrip("/")
     with process("backend.collector.daemon", "--runtime", runtime), sync_playwright() as playwright:
-        browser = playwright.chromium.launch(channel=os.getenv("CICADA_TEST_BROWSER"))
+        browser = playwright.chromium.launch(channel=os.getenv("HEIMDAL_TEST_BROWSER"))
         with browser:
             page = browser.new_page(viewport={"width": 1600, "height": 1800})
 

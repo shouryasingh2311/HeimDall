@@ -1,6 +1,6 @@
 # Phase 5 verification
 
-HeimDall counts fresh authentication failures inside the collector and sends only a typed summary after the fifth failure within ten seconds. The SaaS combines static severe thresholds with a rolling statistical baseline. Alerts, incident membership, baseline state, and the accepted payload commit together. The dashboard links each signal to its real payload and displays its observed value, baseline, and score inputs.
+Heimdal counts fresh authentication failures inside the collector and sends only a typed summary after the fifth failure within ten seconds. The SaaS combines static severe thresholds with a rolling statistical baseline. Alerts, incident membership, baseline state, and the accepted payload commit together. The dashboard links each signal to its real payload and displays its observed value, baseline, and score inputs.
 
 | Check | Observed evidence |
 |---|---|

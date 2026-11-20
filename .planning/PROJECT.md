@@ -1,4 +1,4 @@
-# Cicada: eight-hour prototype plan
+# Heimdal: eight-hour prototype plan
 
 See STATE.md for current implementation and validation progress.
 

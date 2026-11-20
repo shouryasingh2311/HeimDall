@@ -13,7 +13,7 @@ from backend.shared.models import CollectorHeartbeat, IngestReceipt, MetadataPay
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, default=Path(".cicada/contracts"))
+    parser.add_argument("--output", type=Path, default=Path(".heimdal/contracts"))
     dest = parser.parse_args().output
     dest.mkdir(parents=True, exist_ok=True)
     source_id = "src-" + "0" * 32

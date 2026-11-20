@@ -13,12 +13,15 @@ from fastapi.responses import HTMLResponse, Response
 from uuid import UUID
 
 from backend.collector.demo_source import RawEvent
+from backend.collector.scenario_runner import ScenarioBusy, ScenarioRunner
 from backend.collector.scrubber import scrub_preview
+from backend.collector.transport import DELIVERY_ERRORS
 from backend.shared.config import CollectorSettings
 from backend.shared.models import MetadataPayload
+from backend.shared.scenarios import ScenarioNumber
 
 PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8">
-<title>Cicada local egress proof</title><script src="/audit.js" defer></script></head><body>
+<title>Heimdal local egress proof</title><script src="/audit.js" defer></script></head><body>
 <h1>Local egress proof</h1>
 <p>Copy only the payload UUID and SHA-256 digest to the SaaS window.</p>
 <form><label>Local session token <input id="token" type="password" required autocomplete="off"></label>
@@ -93,6 +96,7 @@ class AuditPreview:
 
 def create_inspector(
     settings: CollectorSettings, audit: AuditPreview, queue_status: Callable[[], Awaitable[dict]],
+    scenarios: ScenarioRunner | None = None,
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_app):
@@ -158,4 +162,87 @@ def create_inspector(
         check_token(request)
         return {"retained_previews": len(audit.latest(500)), **await queue_status()}
 
+    if scenarios is not None:
+        @app.get("/scenarios")
+        async def scenario_page():
+            return HTMLResponse(SCENARIO_PAGE)
+
+        @app.get("/scenarios.js")
+        async def scenario_script():
+            return Response(SCENARIO_JS, media_type="text/javascript")
+
+        @app.get("/api/local/scenarios")
+        async def scenario_status(request: Request):
+            check_token(request)
+            return {"result": scenarios.current, "publishing": bool(scenarios.pending)}
+
+        @app.post("/api/local/scenarios/{number}", status_code=202)
+        async def start_scenario(number: ScenarioNumber, request: Request):
+            check_token(request)
+            try:
+                return await scenarios.start(number)
+            except ScenarioBusy as error:
+                raise HTTPException(409, str(error)) from None
+
+        @app.post("/api/local/reset")
+        async def reset_scenario(request: Request):
+            check_token(request)
+            try:
+                await scenarios.reset()
+            except ScenarioBusy as error:
+                raise HTTPException(409, str(error)) from None
+            except DELIVERY_ERRORS:
+                raise HTTPException(503, "Cannot verify pending actions") from None
+            return {"reset": True}
+
     return app
+
+
+SCENARIO_PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8">
+<title>Heimdal local scenarios</title><script src="/scenarios.js" defer></script></head><body>
+<h1>Local demo scenarios</h1>
+<label>Local session token <input id="token" type="password" autocomplete="off"></label>
+<ol>
+<li><button data-run="1">Verify local secret handling</button></li>
+<li><button data-run="2">Pause metadata delivery for 30 seconds</button></li>
+<li><button data-run="3">Count failed logins</button></li>
+<li><button data-run="4">Inject related network degradation</button></li>
+<li><button data-run="5">Detect a sustained CPU deviation</button></li>
+<li><button data-run="6">Group related alerts with an unrelated control</button></li>
+<li><button data-run="7">Replay duplicate and late events</button></li>
+<li><button data-run="8">Simulate memory remediation</button> Approve and roll back from the operator dashboard.</li>
+</ol>
+<button id="reset">Reset demo inputs</button>
+<p id="status" role="status"></p><pre id="result"></pre></body></html>"""
+
+SCENARIO_JS = """const token = document.getElementById('token');
+const status = document.getElementById('status');
+const result = document.getElementById('result');
+let timer;
+async function request(path, method = 'GET') {
+  const response = await fetch(path, { method, headers: { Authorization: 'Bearer ' + token.value } });
+  const data = await response.json();
+  if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Request failed');
+  return data;
+}
+async function refresh() {
+  try {
+    const state = await request('/api/local/scenarios');
+    result.textContent = state.result ? JSON.stringify(state.result, null, 2) : '';
+    status.textContent = state.publishing && state.result?.status !== 'running' ? 'Publishing evidence…' : '';
+  } catch (error) { status.textContent = error.message; }
+}
+async function act(path) {
+  window.clearInterval(timer);
+  try {
+    await request(path, 'POST');
+    await refresh();
+  } catch (error) { status.textContent = error.message; }
+  timer = window.setInterval(refresh, 2000);
+}
+document.querySelectorAll('[data-run]').forEach(button => {
+  button.addEventListener('click', () => act('/api/local/scenarios/' + button.dataset.run));
+});
+document.getElementById('reset').addEventListener('click', () => act('/api/local/reset'));
+token.addEventListener('change', refresh);
+"""

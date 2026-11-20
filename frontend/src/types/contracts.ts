@@ -1,5 +1,5 @@
 /**
- * Shared contracts v1 TypeScript definitions for Cicada Operations Dashboard
+ * Shared contracts v1 TypeScript definitions for Heimdal Operations Dashboard
  * Strictly adheres to .planning/CONTRACTS.md
  * Never includes raw logs, passwords, IPs, credentials, or unstructured blobs.
  */
@@ -221,13 +221,13 @@ export interface ScenarioResult {
   scenario_id: number;
   status: 'running' | 'passed' | 'failed' | 'blocked';
   started_at_utc: string;
-  finished_at_utc: string;
+  finished_at_utc: string | null;
   checks: Record<string, boolean | number | null>;
   payload_uuids: string[];
   incident_ids: string[];
   missing_ids: string[];
   duplicate_count: number;
-  reason_code?: string;
+  reason_code?: string | null;
 }
 
 export interface ApiClientConfig {

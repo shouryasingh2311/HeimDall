@@ -1,12 +1,12 @@
 # Architecture & Trust Boundaries
 
-This document provides a deep architectural breakdown of **Cicada**, its two-tier deployment model, trust boundaries, cryptographic verification, persistent storage engine, and AIOps pipeline.
+This document provides a deep architectural breakdown of **Heimdal**, its two-tier deployment model, trust boundaries, cryptographic verification, persistent storage engine, and AIOps pipeline.
 
 ---
 
 ## 1. Two-Tier Deployment Topology
 
-Cicada separates data collection from centralized analysis across physical and network trust boundaries:
+Heimdal separates data collection from centralized analysis across physical and network trust boundaries:
 
 ```
 +-------------------------------------------------------------------------+
@@ -79,7 +79,7 @@ Cicada separates data collection from centralized analysis across physical and n
 
 ### 2.1 Transport Layer Security (TLS 1.3)
 * **Zero Insecure Fallbacks:** Production and development collectors enforce strict TLS verification using a local CA root. `verify=False` is strictly prohibited.
-* **Server SAN Verification:** Server certificates include Subject Alternative Names for `localhost`, `127.0.0.1`, and explicit regional hostnames (`us-east.cicada.local`, `eu-west.cicada.local`).
+* **Server SAN Verification:** Server certificates include Subject Alternative Names for `localhost`, `127.0.0.1`, and explicit regional hostnames (`us-east.heimdal.local`, `eu-west.heimdal.local`).
 * **Client Handshake:** Python's `HTTPX` client verifies both the certificate authority trust chain and server hostname before any payload bytes are transmitted.
 
 ### 2.2 Identity & Role-Based Access Control (RBAC)
@@ -107,7 +107,7 @@ $$\text{source\_id} = \text{HMAC-SHA256}(\text{source\_key}, \text{tenant\_secre
 ## 3. Data Sanitization & Egress Proof Engine
 
 ### 3.1 Strict Nested Allow-Listing
-Unlike platforms that accept free-form JSON payloads or dictionaries, Cicada rejects extra fields at the Pydantic parser layer:
+Unlike platforms that accept free-form JSON payloads or dictionaries, Heimdal rejects extra fields at the Pydantic parser layer:
 
 ```python
 class StrictModel(BaseModel):
@@ -200,7 +200,7 @@ The SaaS health engine classifies collectors and monitored sources into four sta
 ## 6. Statistical AIOps & Incident Correlation
 
 ### 6.1 Anomaly Detection Engine
-Cicada uses a deterministic rolling z-score algorithm with an adaptive variance floor:
+Heimdal uses a deterministic rolling z-score algorithm with an adaptive variance floor:
 $$z = \frac{x_t - \mu_{t-1}}{\max(\sigma_{t-1}, \sigma_{\text{floor}})}$$
 * $\mu_{t-1}$: Rolling mean over the prior $N$ samples ($N \ge 10$ warm-up).
 * $\sigma_{t-1}$: Rolling standard deviation over the prior $N$ samples.
@@ -220,7 +220,7 @@ When an anomaly signal occurs:
 
 ## 7. Policy-Guarded Remediation & Rollback
 
-Cicada provides an end-to-end audit trail for autonomous remediation:
+Heimdal provides an end-to-end audit trail for autonomous remediation:
 
 ```
 [ Incident Raised ]

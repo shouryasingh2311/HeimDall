@@ -23,6 +23,8 @@ wheels/
 
 # Virtual environments
 .venv/
+.heimdal/
+# Protect private runtime files in older checkouts too.
 .cicada/
 env/
 venv/
