@@ -1,3 +1,7 @@
+# ==============================================================================
+# HeimDall - Git Ignore Policy
+# ==============================================================================
+
 # Python & Bytecode
 __pycache__/
 *.py[cod]
@@ -23,14 +27,15 @@ wheels/
 
 # Virtual environments
 .venv/
-.heimdal/
-# Protect private runtime files in older checkouts too.
-.cicada/
 env/
 venv/
 ENV/
 
-# Secrets & Environment files
+# Runtime data & private demo directories
+.heimdal/
+.cicada/
+
+# Secrets, TLS Certificates, & Keys
 .env
 .env.*
 !.env.example
@@ -38,19 +43,50 @@ ENV/
 *.key
 *.pfx
 *.p12
+*.crt
+*.csr
+*.token
+*.secret
 
-# Pytest / Coverage
-.pytest_cache/
-.coverage
-htmlcov/
-
-# Local databases and runtime artifacts
+# Local databases & SQLite locks
 *.db
 *.db-wal
 *.db-shm
 *.sqlite*
 *.wal
 
-# Node / Frontend
+# Pytest & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node & Frontend builds
 node_modules/
 .npm
+frontend/node_modules/
+frontend/dist/
+
+# Planning scratchpads & prompt instructions
+.planning/
+.claude/
+*.pdf
+evaluation_guide_extracted.txt
+research.md
+
+# Operating System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# IDE & Editor artifacts
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace

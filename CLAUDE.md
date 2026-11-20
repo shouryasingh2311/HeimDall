@@ -29,12 +29,11 @@ Privacy-first distributed observability platform (Smart Observability Hackathon 
 - `backend/shared/`: Shared Pydantic contracts, configuration schemas, crypto/digest utilities.
 - `frontend/`: React 19 dashboard (Fleet status, Payload Inspector, Metrics SVG sparklines, Incident Correlation, Remediation controls, Scenario Results).
 - `tests/`: `tests/core/` (backend regression), `tests/scenarios/` (black-box verification), `tests/ui/` (client-side checks).
-- `.planning/`: GSD tracking, CONTRACTS.md (interface authority), REQUIREMENTS.md, phase summaries.
-- `docs/`: RUNBOOK.md (judge evaluation guide), API.md, ARCHITECTURE.md.
+- `docs/`: RUNBOOK.md (judge evaluation guide), API.md, ARCHITECTURE.md, CONTRACTS.md (schema authority).
 
 ## Core Conventions & Invariants
 - **Two-Tier Privacy Rule**: Customer local logs/secrets NEVER leave localhost (`http://localhost:9001/audit`). SaaS only receives allowlisted metadata and SHA-256 wire body digests.
 - **Lean Dependencies (Ponytail)**: Prefer stdlib and native platform features. No heavy charting libraries (pure SVG sparklines). No unrequested abstractions.
-- **Contract Authority**: `.planning/CONTRACTS.md` is the canonical schema authority. Do not alter backend contracts without coordination.
+- **Contract Authority**: `docs/CONTRACTS.md` is the canonical schema authority. Do not alter backend contracts without coordination.
 - **Error Handling**: Fail honestly on 503/network errors; zero mock fallback during live connectivity.
 - **Git & Commits**: Conventional Commits (`feat:`, `fix:`, `docs:`, `test:`) with small, scoped diffs.

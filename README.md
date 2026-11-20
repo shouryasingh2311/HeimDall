@@ -14,7 +14,7 @@ Built for the CICADA 2026 hackathon.
 
 Heimdal is an AIOps observability platform designed to monitor distributed services without sending raw logs, credentials, or sensitive customer records across network boundaries.
 
-> Quick links: [Run the live demo](docs/RUNBOOK.md) · [Member 1 Lead](.planning/MEMBER_1_LEAD.md) · [Member 2 Dashboard](.planning/MEMBER_2_DASHBOARD.md) · [Member 3 Validation](.planning/MEMBER_3_VALIDATION.md) · [Contracts](.planning/CONTRACTS.md) · [Architecture](.planning/ARCHITECTURE.md)
+> Quick links: [Run the live demo](docs/RUNBOOK.md) · [Architecture](docs/ARCHITECTURE.md) · [API Reference](docs/API.md) · [Data Contracts](docs/CONTRACTS.md)
 
 The system separates collection and central analysis into two tiers:
 1. Customer-local collector: Runs inside the customer environment. It filters, redacts, and aggregates telemetry locally. Raw logs, secrets, and customer data never leave this boundary. An SQLite outbox buffers records during outages, and a local loopback server displays the outbound payload and cryptographic digest.
@@ -186,18 +186,13 @@ The test harness exercises all 8 evaluation scenarios:
 ## Repository Structure
 
 ```
-monitor/
-├── .planning/                  # Authoritative planning and specifications
+HeimDall/
+├── docs/                       # Project documentation and specifications
 │   ├── ARCHITECTURE.md         # Trust boundary and network specification
 │   ├── CONTRACTS.md            # Complete API schemas and data contracts
-│   ├── REQUIREMENTS.md         # 43 canonical project requirements
-│   ├── ROADMAP.md              # 8-phase milestone breakdown and acceptance gates
-│   ├── STATE.md                # Project status, gate progress, and evidence log
-│   ├── TEAM_EXECUTION.md       # Ownership matrix across M1, M2, and M3
-│   ├── VALIDATION.md           # 14 acceptance checks (V00 to V13) and test catalog
-│   └── phases/                 # Individual capability phase plans (01 to 08)
-├── docs/                       # Project documentation
-│   ├── ARCHITECTURE.md         # Architecture and trust boundary guide
+│   ├── API.md                  # REST endpoint definitions
+│   ├── RUNBOOK.md              # Live demonstration and judge evaluation guide
+│   └── CONTRIBUTING.md         # Development guide and testing rules
 │   ├── API.md                  # REST API reference (SaaS and Local Collector)
 │   ├── RUNBOOK.md              # Live demonstration and judge evaluation guide
 │   └── CONTRIBUTING.md         # Development guide, code standards, and PR workflow
@@ -364,29 +359,16 @@ For the full regression with Edge and all eight scenarios, follow the [verificat
 * [Architecture & Trust Boundaries](docs/ARCHITECTURE.md): Network flow, encryption protocols, and transactional outbox mechanics.
 * [Phase 1 Runbook](docs/PHASE1.md): Procedures for running and validating the Phase 1 core architecture and transport.
 * [REST API Reference](docs/API.md): Endpoint catalog for both SaaS and Local Collector services.
+* [Interface Authority (CONTRACTS.md)](docs/CONTRACTS.md): Nested schemas, field limits, and wire-receipt hashing specs.
 * [Judge Evaluation Runbook](docs/RUNBOOK.md): Step-by-step walkthrough for verifying each of the 8 hackathon scenarios.
 * [Developer & Contributing Guide](docs/CONTRIBUTING.md): Team git workflow, code ownership boundaries, and testing rules.
-* [Interface Authority (CONTRACTS.md)](.planning/CONTRACTS.md): Nested schemas, field limits, and wire-receipt hashing specs.
-* [Acceptance Catalog (VALIDATION.md)](.planning/VALIDATION.md): Specifications for checks `V00` through `V13`.
-
----
-
-## Team Roles
-
-The project is structured for a 3-member parallel development workflow:
-
-| Role | Member | Focus Areas & Owned Files |
-|---|---|---|
-| M1: Lead / Core | Project Lead | Architecture, shared Pydantic models (`backend/shared/**`), security sanitizer, outbox persistence, SaaS API (`backend/saas/**`), AIOps detector, and integration. |
-| M2: Operations Dashboard | Frontend Teammate | React 19 / Vite client (`frontend/**`), fleet health widgets, egress receipt inspector, incident views, and render-to-frame latency timing. |
-| M3: Validation & Adapters | Validation Teammate | Telemetry adapters (`backend/collector/adapters/**`), demo source, local HTML proof UI, 8 scenario harnesses (`tests/scenarios/**`), and runbook. |
 
 ---
 
 ## Status and Limitations
 
 ### Current Status
-* All 8 Phases are fully integrated on `main`. The [Phase 8 evidence record](.planning/phases/08-unified-operations-dashboard-judge-verification-suite/08-01-SUMMARY.md) describes the synthetic demo rehearsal.
+* All 8 Phases are fully integrated on `main`.
 * Gates G0 through G6 achieved.
 * Runtime includes HTTPS SaaS, loopback Collector daemon, local HTML proof inspector, scenario verification engine, and React 19 / Vite dashboard.
 * Checks V01 through V12 verified with synthetic and live test evidence.
