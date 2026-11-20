@@ -110,7 +110,7 @@ export const ConnectionBanner: React.FC<ConnectionBannerProps> = ({
           To view the local proof window, open <code>http://localhost:9001/audit</code> in a separate browser tab.
         </span>
         {lastSyncUtc && (
-          <span className="sync-timestamp">Last sync: {new Date(lastSyncUtc).toLocaleTimeString()} UTC</span>
+          <span className="sync-timestamp">Last sync: {new Date(lastSyncUtc).toLocaleTimeString(undefined, { timeZone: 'UTC' })} UTC</span>
         )}
       </div>
     </header>

@@ -36,6 +36,16 @@ def test_demo_approval_recovery_restart_and_rollback(service, tmp_path):
     viewer, edge = operator(runtime, "alpha"), collector_headers(config)
     launch = ("backend.collector.daemon", "--runtime", runtime, "--demo-memory-pressure")
 
+    # Reproduce a prior normal run. Its tight baseline must not classify the
+    # reduced memory usage in the explicit simulation as a new anomaly.
+    sanitizer = Sanitizer(config)
+    start = utc_now() - timedelta(seconds=10)
+    for i in range(10):
+        raw = replace(sample(config, f"warm-normal-{i}", utc_text(start + timedelta(seconds=i))),
+                      source_key=config.demo_memory_source, metrics={"memory_pct": 45.})
+        client.post(f"/api/v1/ingest/{config.region}", headers=edge,
+                    content=canonical_bytes(sanitizer.metric(raw))).raise_for_status()
+
     def incidents():
         return client.get("/api/v1/incidents", headers=viewer).json()["items"]
 
