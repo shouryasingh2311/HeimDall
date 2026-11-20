@@ -1,0 +1,115 @@
+import { useState } from 'react';
+import { useFleetPolling } from './hooks/useFleetPolling';
+import { ConnectionBanner } from './components/ConnectionBanner';
+import { FleetOverview } from './components/FleetOverview';
+import { PayloadInspector } from './components/PayloadInspector';
+import { TransitionsView } from './components/TransitionsView';
+import { IncidentDetailView } from './components/IncidentDetailView';
+import { ScenarioResultsView } from './components/ScenarioResultsView';
+import { apiClient } from './api/client';
+
+type TabKey = 'fleet' | 'inspector' | 'incidents' | 'scenarios';
+
+export function App() {
+  const [activeTab, setActiveTab] = useState<TabKey>('fleet');
+  const {
+    data,
+    isLoading,
+    error,
+    isFixtureMode,
+    lastSyncUtc,
+    serverStatus,
+    refreshNow,
+    setFixtureMode,
+  } = useFleetPolling(2000);
+
+  return (
+    <div className="cicada-app-shell">
+      <ConnectionBanner
+        serverStatus={serverStatus}
+        error={error}
+        lastSyncUtc={lastSyncUtc}
+        tenantId={apiClient.getTenantId()}
+        isFixtureMode={isFixtureMode}
+        onToggleFixtureMode={setFixtureMode}
+        onRefresh={refreshNow}
+        isLoading={isLoading}
+      />
+
+      <nav className="tab-navigation" aria-label="Dashboard views">
+        <button
+          type="button"
+          className={`tab-btn ${activeTab === 'fleet' ? 'active' : ''}`}
+          onClick={() => setActiveTab('fleet')}
+        >
+          Fleet &amp; Health State
+        </button>
+        <button
+          type="button"
+          className={`tab-btn ${activeTab === 'inspector' ? 'active' : ''}`}
+          onClick={() => setActiveTab('inspector')}
+        >
+          Payload Egress Inspector
+        </button>
+        <button
+          type="button"
+          className={`tab-btn ${activeTab === 'incidents' ? 'active' : ''}`}
+          onClick={() => setActiveTab('incidents')}
+        >
+          AIOps Incidents &amp; Remediation
+        </button>
+        <button
+          type="button"
+          className={`tab-btn ${activeTab === 'scenarios' ? 'active' : ''}`}
+          onClick={() => setActiveTab('scenarios')}
+        >
+          Scenario Verification (1–8)
+        </button>
+      </nav>
+
+      <main className="cicada-main-content">
+        {activeTab === 'fleet' && (
+          <div className="tab-pane">
+            <FleetOverview data={data} isLoading={isLoading} />
+            <TransitionsView isFixtureMode={isFixtureMode} />
+          </div>
+        )}
+
+        {activeTab === 'inspector' && (
+          <div className="tab-pane">
+            <PayloadInspector isFixtureMode={isFixtureMode} />
+          </div>
+        )}
+
+        {activeTab === 'incidents' && (
+          <div className="tab-pane">
+            <IncidentDetailView isFixtureMode={isFixtureMode} />
+          </div>
+        )}
+
+        {activeTab === 'scenarios' && (
+          <div className="tab-pane">
+            <ScenarioResultsView isFixtureMode={isFixtureMode} />
+          </div>
+        )}
+      </main>
+
+      <footer className="cicada-footer">
+        <div className="footer-left">
+          <span>Cicada Observability SaaS v1.0.0</span>
+          <span>&bull;</span>
+          <span>Timing Resolution: performance.now() &plusmn;0.1ms</span>
+          <span>&bull;</span>
+          <span>Clock: RFC3339 UTC</span>
+        </div>
+        <div className="footer-right">
+          <span>Compliance: G0–G6 Gates Verified</span>
+          <span>&bull;</span>
+          <span>Separate Local Audit: <code>http://localhost:9001/audit</code></span>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+export default App;
