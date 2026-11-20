@@ -96,7 +96,7 @@ def sample(config, identity="test-record", time_utc=None):
         source_key=config.source_keys[0], tenant_id=config.tenant_id, collector_id=config.collector_id,
         input_id=identity, event_time_utc=time_utc or utc_text(utc_now()), source_timezone="Asia/Kolkata",
         metrics={"cpu_pct": 24.7, "service_available": True, "unapproved": "synthetic-sensitive-value"},
-        raw_text="synthetic-secret=<script>not HTML</script>",
+        raw_text="synthetic-secret=fixture-local-only <script>not HTML</script>",
     )
 
 
@@ -182,7 +182,7 @@ def test_live_collector_privacy_and_browser_slice(service, tmp_path):
                     if latest["state"] == "acknowledged":
                         break
                     time.sleep(0.05)
-                assert latest["raw_preview"] == raw.raw_text
+                assert latest["raw_preview"] == "synthetic-secret=[REDACTED] <script>not HTML</script>"
                 assert latest["state"] == "acknowledged"
                 assert latest["approved_body"].encode() == canonical_bytes(payload)
                 assert latest["body_sha256"] == central["body_sha256"] == latest["receipt"]["body_sha256"]
@@ -191,16 +191,18 @@ def test_live_collector_privacy_and_browser_slice(service, tmp_path):
                 assert client.get("/api/local/audit", headers=app_headers).status_code == 404
                 fleet = wait_for(client, "/api/v1/fleet", proc, app_headers).json()
                 assert fleet["collectors"][0]["collector_id"] == alpha.collector_id
+                local_match = local.get(
+                    "/api/local/audit", params={"payload_uuid": payload.payload_uuid}, headers=local_headers,
+                ).json()["items"][0]
+                assert local_match == latest
+                if os.getenv("CICADA_TEST_DASHBOARD"):
+                    verify_dashboard(client, app_headers, local, local_headers, local_match)
 
-    if os.getenv("CICADA_TEST_DASHBOARD"):
-        verify_dashboard(client, app_headers, payload.payload_uuid, central["body_sha256"])
 
-
-def verify_dashboard(client, app_headers, uuid, digest):
+def verify_dashboard(client, app_headers, local, local_headers, proof):
     from playwright.sync_api import expect, sync_playwright
 
-    # Forward only this origin to the real, CA-verified HTTPS process. Test credentials
-    # are supplied by the harness while the dashboard branch's credential UI is pending.
+    # Forward through a CA-verified client without rewriting browser credentials.
     origin = str(client.base_url).rstrip("/")
     with sync_playwright() as playwright:
         channel = os.getenv("CICADA_TEST_BROWSER")
@@ -210,19 +212,39 @@ def verify_dashboard(client, app_headers, uuid, digest):
 
             def forward(route):
                 path = route.request.url.removeprefix(origin)
-                options = {"headers": app_headers} if path.startswith("/api/") else {}
-                response = client.request(route.request.method, path, **options)
+                forwarded = {
+                    key: value for key, value in route.request.all_headers().items()
+                    if key in {"authorization", "x-tenant-id", "content-type"}
+                }
+                response = client.request(route.request.method, path, headers=forwarded)
                 route.fulfill(
                     status=response.status_code, body=response.content,
                     content_type=response.headers.get("content-type", "application/octet-stream"),
                 )
 
             page.route(f"{origin}/**", forward)
+            local_page = browser.new_page()
+            local_page.goto(f"{str(local.base_url).rstrip('/')}/audit")
+            local_page.get_by_label("Local session token").fill(local_headers["Authorization"].split()[1])
+            local_page.get_by_label("Payload UUID (optional)").fill(proof["payload_uuid"])
+            local_page.get_by_role("button", name="Fetch local evidence").click()
+            expect(local_page.locator("#identity")).to_contain_text(proof["body_sha256"])
+            uuid, digest = local_page.locator("#identity").inner_text().splitlines()
+            expect(local_page.locator("#approved")).to_have_text(proof["approved_body"])
+            expect(local_page.locator("#raw")).to_contain_text("<script>not HTML</script>")
+            expect(local_page.locator("#raw script")).to_have_count(0)
             page.goto(origin)
-            page.get_by_role("button", name="Payload Egress Inspector").click()
-            page.get_by_label("Payload UUIDv5").fill(uuid)
+            page.get_by_label("Tenant ID").fill(app_headers["X-Tenant-ID"])
+            page.get_by_label("Operator token").fill(app_headers["Authorization"].split()[1])
+            page.get_by_role("button", name="Connect dashboard").click()
+            page.get_by_role("button", name="Payload Egress Inspector", exact=True).click()
+            page.get_by_label("Inspect Payload UUIDv5").fill(uuid)
             page.get_by_role("button", name="Inspect Metadata").click()
             expect(page.get_by_text(digest, exact=True)).to_be_visible()
+            page.get_by_label("Local collector SHA-256 digest").fill("0" * 64)
+            expect(page.get_by_text("DIGEST MISMATCH:", exact=True)).to_be_visible()
+            page.get_by_label("Local collector SHA-256 digest").fill(digest)
+            expect(page.get_by_text("DIGEST MATCH CONFIRMED:", exact=True)).to_be_visible()
             expect(page.get_by_text("synthetic-secret", exact=False)).to_have_count(0)
 
 

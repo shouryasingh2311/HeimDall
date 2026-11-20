@@ -52,7 +52,7 @@ export class CicadaApiClient {
     this.config = {
       baseUrl: initialConfig?.baseUrl || (typeof window !== 'undefined' ? (window as unknown as { __VITE_API_BASE__?: string }).__VITE_API_BASE__ || '' : ''),
       tenantId: initialConfig?.tenantId || 'tenant-acme-corp',
-      operatorToken: initialConfig?.operatorToken || 'op-token-dev-secret',
+      operatorToken: initialConfig?.operatorToken,
     };
     this.sessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
   }
