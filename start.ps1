@@ -67,6 +67,9 @@ Write-Host "====================================================================
 Write-Host "Press Ctrl+C to stop all services." -ForegroundColor Gray
 Write-Host ""
 
+# Automatically open browser to dashboard
+Start-Process "https://localhost:8443"
+
 # 6. Launch processes in parallel jobs
 $saasJob = Start-Job -ScriptBlock {
     param($py, $dir)

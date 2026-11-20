@@ -9,6 +9,10 @@ Privacy-first distributed observability platform (Smart Observability Hackathon 
 - **Security / Wire**: TLS with verified CA, HMAC pseudonyms, zero-raw-log egress.
 
 ## Build & Run
+- **Remote 1-Liner (Zero-Git)**:
+  - Windows: `irm https://raw.githubusercontent.com/shouryasingh2311/HeimDall/main/install.ps1 | iex`
+  - Linux/macOS: `curl -fsSL https://raw.githubusercontent.com/shouryasingh2311/HeimDall/main/install.sh | bash`
+- **1-Click Windows**: Double-click `run.bat` (auto-bootstraps and opens browser)
 - **1-Command Docker**: `docker compose up` (builds frontend, installs python deps, bootstraps certs & tokens, starts both services)
 - **1-Command Native**: `.\start.ps1` (Windows) or `./start.sh` (Linux/macOS)
 - **Manual Bootstrap**: `.venv/Scripts/python -m scripts.security.bootstrap --runtime .heimdal/demo`

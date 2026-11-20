@@ -227,17 +227,36 @@ HeimDall/
 
 ## Getting Started & Deployment
 
-Choose the setup that fits your target environment:
+Choose the installation method that fits your preferences:
 
-### Method A: One-Command Deployment with Docker (Recommended)
+### Method 1: Zero-Clone One-Liner (Easiest — No Git required)
+Run one command in your terminal. It downloads HeimDall, checks for Docker/Python, bootstraps TLS certificates and tokens, and **automatically launches your browser** directly into the platform.
+
+**On Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/shouryasingh2311/HeimDall/main/install.ps1 | iex
+```
+
+**On Linux / macOS (Bash):**
+```bash
+curl -fsSL https://raw.githubusercontent.com/shouryasingh2311/HeimDall/main/install.sh | bash
+```
+
+---
+
+### Method 2: 1-Click Desktop Launcher (`run.bat`)
+If you downloaded or cloned the repository on Windows:
+1. Double-click **`run.bat`** in the repository root.
+2. The launcher sets up the environment, starts all services, and opens the dashboard in your default browser automatically.
+
+---
+
+### Method 3: One-Command Docker Deployment (Recommended for Containers)
 No Python, Node.js, or virtual environments required on the host system.
 
 ```bash
-# Clone and enter the repository
 git clone https://github.com/shouryasingh2311/HeimDall.git
 cd HeimDall
-
-# Build and start all services
 docker compose up
 ```
 
@@ -249,8 +268,8 @@ Once running:
 
 ---
 
-### Method B: One-Command Native Quick Start (No Docker)
-If Docker is not available on the target system, automated startup scripts handle virtual environment creation, dependencies, frontend compilation, and TLS bootstrap automatically:
+### Method 4: One-Command Native Quick Start (No Docker)
+If Docker is not installed, automated startup scripts handle virtual environment creation, dependencies, frontend compilation, and TLS bootstrap automatically:
 
 **On Windows (PowerShell):**
 ```powershell
@@ -269,7 +288,7 @@ chmod +x start.sh
 
 ---
 
-### Method C: Manual Development Setup
+### Method 5: Manual Development Setup
 
 #### Prerequisites
 * Python: 3.11 or newer.

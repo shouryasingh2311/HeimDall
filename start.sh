@@ -55,6 +55,13 @@ echo -e "\033[1;32m=============================================================
 echo "Press Ctrl+C to stop all services."
 echo ""
 
+# Automatically open default browser if supported
+if command -v open &> /dev/null; then
+    open "https://localhost:8443"
+elif command -v xdg-open &> /dev/null; then
+    xdg-open "https://localhost:8443" 2>/dev/null || true
+fi
+
 cleanup() {
     echo ""
     echo "==> Stopping HeimDall services..."
