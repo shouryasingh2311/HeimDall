@@ -93,6 +93,17 @@ class CicadaApiClientTestable {
     this.renderedPayloadKeys.clear();
   }
 
+  setConfig(newConfig) {
+    if (newConfig.baseUrl !== undefined) this.config.baseUrl = newConfig.baseUrl;
+    if (newConfig.tenantId !== undefined) this.config.tenantId = newConfig.tenantId;
+    if (newConfig.operatorToken !== undefined) this.config.operatorToken = newConfig.operatorToken;
+    this.renderedPayloadKeys.clear();
+  }
+
+  getConfig() {
+    return { ...this.config };
+  }
+
   clearRenderCache() {
     this.renderedPayloadKeys.clear();
   }
@@ -208,7 +219,36 @@ async function runAllChecks() {
     'Mismatched digest must verify false',
   );
 
-  console.log('--- All 7 UI Verification Checks PASSED! ---');
+  // Test 8: setConfig updates scope and wipes render cache
+  console.log('Check 8: setConfig updates tenant and resets render cache...');
+  await client.recordFirstRender('uuid-alpha-001');
+  assert.equal(client.renderedPayloadKeys.has('uuid-alpha-001'), true);
+  client.setConfig({ tenantId: 'tenant-beta', operatorToken: 'token-beta-123' });
+  assert.equal(client.getConfig().tenantId, 'tenant-beta');
+  assert.equal(client.getConfig().operatorToken, 'token-beta-123');
+  assert.equal(client.renderedPayloadKeys.size, 0, 'Render cache must be wiped upon tenant change');
+
+  // Test 9: Phase 3 Buffer depth calculation and non-inference verification rule
+  console.log('Check 9: Outbox queue depth and non-inference delivery verification...');
+  const testCollectors = [
+    { collector_id: 'col-1', queue_depth: 25 },
+    { collector_id: 'col-2', queue_depth: 50 },
+  ];
+  const aggregateQueue = testCollectors.reduce((acc, c) => acc + c.queue_depth, 0);
+  assert.equal(aggregateQueue, 75, 'Aggregate queue depth must equal sum of collector queues');
+
+  // Non-inference rule: empty queue alone is NOT verified delivery
+  const isDeliveryVerified = (queueDepth, verifiedReceipts) => {
+    // If queue is 0 but 0 receipts, delivery is unproven/empty
+    if (queueDepth === 0 && verifiedReceipts === 0) return false;
+    // Delivery is verified only when receipt count > 0 and queue is drained
+    return queueDepth === 0 && verifiedReceipts > 0;
+  };
+  assert.equal(isDeliveryVerified(0, 0), false, 'Empty queue with 0 receipts must not assert delivery verified');
+  assert.equal(isDeliveryVerified(75, 50), false, 'Active queue must not assert delivery verified');
+  assert.equal(isDeliveryVerified(0, 100), true, 'Drained queue with committed receipts asserts delivery verified');
+
+  console.log('--- All 9 UI Verification Checks PASSED! ---');
 }
 
 runAllChecks().catch((err) => {

@@ -51,8 +51,8 @@ export class CicadaApiClient {
   constructor(initialConfig?: Partial<ApiClientConfig>) {
     this.config = {
       baseUrl: initialConfig?.baseUrl || (typeof window !== 'undefined' ? (window as unknown as { __VITE_API_BASE__?: string }).__VITE_API_BASE__ || '' : ''),
-      tenantId: initialConfig?.tenantId || 'tenant-acme-corp',
-      operatorToken: initialConfig?.operatorToken || 'op-token-dev-secret',
+      tenantId: initialConfig?.tenantId || 'tenant-alpha',
+      operatorToken: initialConfig?.operatorToken || '',
     };
     this.sessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
   }
@@ -62,9 +62,23 @@ export class CicadaApiClient {
    */
   public setTenant(tenantId: string, operatorToken?: string): void {
     this.config.tenantId = tenantId;
-    this.config.operatorToken = operatorToken;
+    if (operatorToken !== undefined) {
+      this.config.operatorToken = operatorToken;
+    }
     this.renderedPayloadKeys.clear();
     this.abortAllRequests();
+  }
+
+  public setConfig(newConfig: Partial<ApiClientConfig>): void {
+    if (newConfig.baseUrl !== undefined) this.config.baseUrl = newConfig.baseUrl;
+    if (newConfig.tenantId !== undefined) this.config.tenantId = newConfig.tenantId;
+    if (newConfig.operatorToken !== undefined) this.config.operatorToken = newConfig.operatorToken;
+    this.renderedPayloadKeys.clear();
+    this.abortAllRequests();
+  }
+
+  public getConfig(): ApiClientConfig {
+    return { ...this.config };
   }
 
   public getTenantId(): string {

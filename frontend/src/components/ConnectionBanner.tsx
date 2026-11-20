@@ -10,6 +10,7 @@ interface ConnectionBannerProps {
   isFixtureMode: boolean;
   onToggleFixtureMode: (enabled: boolean) => void;
   onRefresh: () => void;
+  onOpenSettings: () => void;
   isLoading: boolean;
 }
 
@@ -21,6 +22,7 @@ export const ConnectionBanner: React.FC<ConnectionBannerProps> = ({
   isFixtureMode,
   onToggleFixtureMode,
   onRefresh,
+  onOpenSettings,
   isLoading,
 }) => {
   return (
@@ -29,7 +31,14 @@ export const ConnectionBanner: React.FC<ConnectionBannerProps> = ({
         <div className="brand-section">
           <span className="brand-badge">CICADA</span>
           <h1 className="system-title">Operations & Fleet Monitoring</h1>
-          <span className="tenant-tag">Tenant: {tenantId}</span>
+          <button
+            type="button"
+            className="tenant-tag-btn"
+            onClick={onOpenSettings}
+            title="Click to change operator credentials or tenant scope"
+          >
+            Tenant: {tenantId} &bull; Scope Settings
+          </button>
         </div>
 
         <div className="status-controls">
@@ -50,6 +59,14 @@ export const ConnectionBanner: React.FC<ConnectionBannerProps> = ({
           )}
 
           <div className="action-buttons">
+            <button
+              type="button"
+              className="settings-btn"
+              onClick={onOpenSettings}
+              title="Configure operator token and tenant scope"
+            >
+              Auth / Scope
+            </button>
             <button
               type="button"
               className={`mode-toggle-btn ${isFixtureMode ? 'active-fixture' : ''}`}
