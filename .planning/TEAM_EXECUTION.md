@@ -2,7 +2,7 @@
 
 ## Allocation principle
 
-M1 (user / GPT-6 Astra) owns all heavy architecture, security, reliability and AIOps work. M2 (Gemini Flash setup) works on UI against frozen JSON. M3 (Gemini Flash setup) works on deterministic inputs, pure simulation helpers, local presentation and black-box verification. This does not assume either teammate is incapable: bounded tasks prevent independent agents from inventing incompatible protocols.
+M1 uses GPT-6.2 Sol with high reasoning and owns architecture, security, reliability and AIOps. M2 uses Gemini Flash for UI work against the shared contracts. M3 uses Gemini Flash for deterministic inputs, simulation helpers, local presentation and verification.
 
 The lead is the critical path. Use the minimal scope below; if the lead slips, teammates take mechanical tests/fixtures/documentation, never redesign authentication or storage. team-config.json records this workflow; legacy config.json is retained only for optional GSD tooling compatibility and does not govern team branching.
 

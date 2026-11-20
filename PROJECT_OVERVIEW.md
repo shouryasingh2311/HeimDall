@@ -39,7 +39,7 @@ Freeze working dependencies and commit lockfiles during setup. No external LLM s
 
 ## Team split
 
-M1 (you, GPT-6 Astra): architecture/contracts, all collector/API security, buffering/deduplication, health, AIOps, remediation policy and integration.
+M1 uses GPT-6.2 Sol with high reasoning and owns architecture, contracts, collector and API security, buffering, deduplication, health, AIOps, remediation policy and integration.
 M2 (teammate, Gemini Flash setup): frontend scaffold/client, fleet/trend/receipt/incident screens, approval UI and genuine render timing.
 M3 (teammate, Gemini Flash setup): organizer adapter, seeded demo input, pure snapshot simulator, local proof-page layout, eight scenario inputs/verifier and runbook.
 
@@ -72,4 +72,4 @@ Obtain actual organizer stream/format before certifying compatibility. Working t
 
 ## Current status
 
-Documentation only. No runtime, test suite or measured result exists yet. All application paths and commands in planning are implementation targets. See [STATE.md](.planning/STATE.md).
+Member 3's adapter and verification code is on `main`. Member 2's dashboard is on its feature branch. The integrated prototype and acceptance results are tracked in [STATE.md](.planning/STATE.md).

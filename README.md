@@ -1,10 +1,12 @@
 # Cicada — privacy-first observability prototype
 
-Planning repository for an eight-hour, three-person hackathon build. No application code is implemented yet.
+Three-person, eight-hour hackathon build. See the project state for teammate progress and integration status.
 
 Start with [Project overview](PROJECT_OVERVIEW.md), then [team execution](.planning/TEAM_EXECUTION.md) and [Git workflow](.planning/GIT_WORKFLOW.md).
 
-- [Member 1 — lead/core, GPT-6 Astra](.planning/MEMBER_1_LEAD.md)
+[Run Phase 1 locally](docs/PHASE1.md) for the secure collector and SaaS startup, the generated API contracts, and verification.
+
+- [Member 1 — lead/core, GPT-6.2 Sol (high)](.planning/MEMBER_1_LEAD.md) · [GSD commands](.planning/MEMBER_1_LEAD.md#gsd-commands)
 - [Member 2 — dashboard](.planning/MEMBER_2_DASHBOARD.md)
 - [Member 3 — adapters, simulation and verification](.planning/MEMBER_3_VALIDATION.md)
 - [Architecture](.planning/ARCHITECTURE.md), [contracts](.planning/CONTRACTS.md), [requirements](.planning/REQUIREMENTS.md)

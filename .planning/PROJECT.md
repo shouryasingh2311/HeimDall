@@ -1,6 +1,6 @@
 # Cicada: eight-hour prototype plan
 
-Status: planning only. No application has been implemented or validated.
+See STATE.md for current implementation and validation progress.
 
 ## Objective and constraints
 
@@ -10,7 +10,7 @@ The user's eight-hour limit supersedes the PDF's 24-hour event framing. Three pe
 
 ## Team
 
-- M1: project lead/user, using GPT-6 Astra as requested. Owns contracts, security, collector orchestration, persistence, SaaS, AIOps, remediation policy, and integration decisions.
+- M1 uses GPT-6.2 Sol with high reasoning. Owns contracts, security, collector orchestration, persistence, SaaS, AIOps, remediation policy, and integration decisions.
 - M2: teammate using the user's Gemini Flash setup. Owns React UI, typed client, browser timing and UI checks against frozen interfaces.
 - M3: teammate using the user's Gemini Flash setup. Owns input adapters, deterministic demo source, scenario fixtures, local HTML presentation, black-box verification and runbook.
 - Model labels describe user-selected tooling; no assumption about exact vendor model availability is needed.

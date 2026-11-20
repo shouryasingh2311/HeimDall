@@ -1,12 +1,12 @@
 # Member 1 status
 
-Status: not started (planning revision only).
-Branch: feat/core-platform (planned, not created by this revision).
-Latest commit: pending implementation.
-Completed task/requirement IDs: none.
-Checks executed and observed results: none.
-Interface requests: none yet; read CONTRACTS.md at kickoff.
-Next: follow MEMBER_1_LEAD.md and G0.
-Blockers: organizer stream/format and dependency setup to confirm.
+Model: GPT-6.2 Sol with high reasoning.
+Status: Phase 1 core implementation verified. Organizer and direct dashboard integration evidence pending.
+Branch: feat/core-platform, synced with main at 2d02313.
+Delivered: ARCH-01 through ARCH-04 prototype paths. Geographic deployment remains a design item.
+Checks: 21 Python tests, including separate local processes, TLS and scope rejection, receipt matching, and live receipt rendering in Edge. Dashboard build and four client checks passed.
+Interface: export the Phase 1 OpenAPI schema and examples with scripts.security.export_contracts. Dashboard operator authentication needs the generated tenant and token.
+Next: close the remaining G1 evidence as inputs become available and proceed with the next authorized phase.
+Blocker: official organizer stream needed for V00.
 
 Update only this member's file every 30-45 minutes. Record evidence and commit SHA, not just activity. M1 alone updates integrated STATE.md.
