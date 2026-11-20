@@ -97,6 +97,7 @@ class DemoSource:
         self.memory_capacities: Dict[str, int] = {
             node.node_id: node.memory_limit_mb for node in self.NODE_SPECS
         }
+        self.memory_demand_pct: Dict[str, float] = {}
 
     def _next_input_id(self, tenant_id: str, node_id: str) -> str:
         key = f"{tenant_id}:{node_id}"
@@ -176,7 +177,7 @@ class DemoSource:
                 cap = self.memory_capacities.get(spec.node_id, spec.memory_limit_mb)
                 # When capacity increases from 1024 to 2048 MB, memory_pct effectively drops
                 utilization_ratio = (spec.memory_limit_mb / cap)
-                base_mem = spec.base_memory * utilization_ratio
+                base_mem = self.memory_demand_pct.get(spec.node_id, spec.base_memory) * utilization_ratio
                 memory_pct = min(100.0, max(0.0, base_mem + jitter * 0.5))
 
                 # Disk

@@ -2,7 +2,7 @@
 
 import argparse
 import asyncio
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 from dataclasses import replace
 from hashlib import sha256
 import logging
@@ -15,12 +15,13 @@ import uvicorn
 from backend.collector.adapters.jsonl_adapter import JSONLAdapter
 from backend.collector.adapters.organizer_adapter import OrganizerAdapter
 from backend.collector.buffer_queue import Outbox
+from backend.collector.command_runner import NODE, CommandRunner
 from backend.collector.demo_source import DemoSource, RawEvent
-from backend.collector.drainer import DELIVERY_ERRORS, Drainer
+from backend.collector.drainer import Drainer
 from backend.collector.inspector import AuditPreview, create_inspector
 from backend.collector.sanitizer import Sanitizer
 from backend.collector.security_analyzer import QueueFull, SecurityAnalyzer
-from backend.collector.transport import Transport
+from backend.collector.transport import DELIVERY_ERRORS, Transport
 from backend.shared.config import CollectorSettings, read_settings
 from backend.shared.models import CollectorHeartbeat, canonical_bytes, utc_now, utc_text
 
@@ -40,16 +41,16 @@ class Collector:
         self.process = psutil.Process()
         self.process.cpu_percent()
 
-    async def submit(self, event: RawEvent) -> bool:
+    async def submit(self, event: RawEvent, *, simulation: bool = False) -> bool:
         try:
-            return await self.queue_event(event)
+            return await self.queue_event(event, simulation)
         except ValueError:
             LOG.warning("Rejected invalid local event")
             return False
         finally:
             self.backpressure = False
 
-    async def queue_event(self, event: RawEvent) -> bool:
+    async def queue_event(self, event: RawEvent, simulation: bool) -> bool:
         if event.kind == "auth":
             observed_at = utc_now()
             while True:
@@ -64,6 +65,8 @@ class Collector:
             return True
 
         payload = self.sanitizer.metric(event)
+        if simulation:
+            payload = payload.model_copy(update={"simulation": True})
         approved = canonical_bytes(payload)
         while (state := await self.outbox.enqueue(payload, approved)) is None:
             await self.wait_for_capacity()
@@ -106,7 +109,7 @@ class Collector:
                 LOG.warning("Heartbeat failed (%s)", type(error).__name__)
             await asyncio.sleep(10)
 
-    async def events(self, args):
+    async def events(self, args, generator: DemoSource):
         if args.input is not None or args.organizer is not None:
             path = args.input or args.organizer
             if not path.is_file():
@@ -129,12 +132,12 @@ class Collector:
             return accepted
 
         LOG.info("Input mode: DEMO_FALLBACK")
-        generator = DemoSource()
         while True:
             accepted = True
             for event in generator.generate_tick(tenants=[self.settings.tenant_id]):
                 event = replace(event, collector_id=self.settings.collector_id)
-                accepted = await self.submit(event) and accepted
+                eligible = args.demo_memory_pressure and event.source_key == self.settings.demo_memory_source
+                accepted = await self.submit(event, simulation=eligible) and accepted
             if args.once:
                 return accepted
             await asyncio.sleep(2)
@@ -147,8 +150,16 @@ async def run(args, settings: CollectorSettings) -> bool:
     async with (
         Transport(settings, args.runtime / "ca.pem") as transport,
         Outbox.open(outbox_path, settings.outbox_capacity) as outbox,
+        AsyncExitStack() as stack,
     ):
         collector = Collector(settings, transport, audit, outbox)
+        generator = DemoSource()
+        runner = None
+        if args.demo_memory_pressure:
+            generator.memory_demand_pct[NODE] = 98.
+            runner = await stack.enter_async_context(
+                CommandRunner.open(args.runtime / f"demo-{scope}.sqlite3", settings, generator),
+            )
 
         @asynccontextmanager
         async def workers(*jobs):
@@ -164,7 +175,7 @@ async def run(args, settings: CollectorSettings) -> bool:
             async with workers(collector.drainer.run(), collector.send_heartbeats()):
                 try:
                     async with asyncio.timeout(20):
-                        accepted = await collector.events(args)
+                        accepted = await collector.events(args, generator)
                         while (await outbox.counts())[0]:
                             await asyncio.sleep(0.1)
                         return accepted and (await outbox.counts())[1] == 0
@@ -179,14 +190,15 @@ async def run(args, settings: CollectorSettings) -> bool:
         async def lifespan(app):
             async def read_events():
                 try:
-                    if not await collector.events(args):
+                    if not await collector.events(args, generator):
                         LOG.error("Input run failed. See local collector diagnostics.")
                 except (OSError, UnicodeError) as error:
                     LOG.error("Input could not be read (%s)", type(error).__name__)
 
-            async with inspector_lifespan(app), workers(
-                collector.drainer.run(), collector.send_heartbeats(), read_events(),
-            ):
+            jobs = [collector.drainer.run(), collector.send_heartbeats(), read_events()]
+            if runner:
+                jobs.append(runner.run(transport))
+            async with inspector_lifespan(app), workers(*jobs):
                 yield
 
         app.router.lifespan_context = lifespan
@@ -202,11 +214,14 @@ def main():
     source = parser.add_mutually_exclusive_group()
     source.add_argument("--input", type=Path, help="Local RawEvent JSONL file")
     source.add_argument("--organizer", type=Path, help="Organizer JSONL file")
+    source.add_argument("--demo-memory-pressure", action="store_true", help="Enable the isolated memory simulation")
     parser.add_argument("--once", action="store_true", help="Send one batch or file and exit")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     logging.getLogger("httpx").setLevel(logging.WARNING)
     settings = read_settings(args.runtime / f"collector-{args.tenant}.json", CollectorSettings)
+    if args.demo_memory_pressure and (args.once or not settings.demo_memory_source):
+        parser.error("The memory simulation requires a continuous collector and a Phase 6 demo runtime")
     raise SystemExit(0 if asyncio.run(run(args, settings)) else 1)
 
 

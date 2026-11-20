@@ -18,6 +18,7 @@ class Credential(StrictModel):
     token_sha256: TokenDigest
     collector_id: Identifier | None = None
     source_ids: list[Pseudonym] = Field(default_factory=list)
+    demo_source_ids: list[Pseudonym] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def scope_matches_role(self) -> "Credential":
@@ -25,6 +26,8 @@ class Credential(StrictModel):
             raise ValueError("Collector membership is required")
         if self.role == "operator" and (self.collector_id is not None or self.source_ids):
             raise ValueError("Operator scope is tenant-level")
+        if not set(self.demo_source_ids) <= set(self.source_ids):
+            raise ValueError("Demo sources must belong to the collector")
         return self
 
 
@@ -96,6 +99,16 @@ class CollectorSettings(StrictModel):
     saas_url: str = "https://localhost:8443"
     local_port: Annotated[int, Field(ge=1024, le=65535)] = 9001
     outbox_capacity: Annotated[int, Field(ge=1, le=10000)] = 1000
+    demo_memory_source: str | None = None
+
+    @model_validator(mode="after")
+    def valid_demo_source(self):
+        if self.demo_memory_source is not None and (
+            self.demo_memory_source not in self.source_keys
+            or self.demo_memory_source != f"{self.tenant_id}:api-01"
+        ):
+            raise ValueError("Memory simulation requires the configured demo API source")
+        return self
 
     @field_validator("hmac_key")
     @classmethod

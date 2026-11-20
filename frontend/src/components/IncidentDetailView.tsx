@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { IncidentSummary, IncidentDetail, ActionProposal } from '../types/contracts';
+import type { IncidentSummary, IncidentDetail, ActionProposal, ActionAudit } from '../types/contracts';
 import { apiClient } from '../api/client';
 import {
   MOCK_INCIDENTS_SUMMARY,
@@ -31,9 +31,7 @@ export const IncidentDetailView: React.FC<IncidentDetailViewProps> = ({
   const [proposal, setProposal] = useState<ActionProposal | null>(
     isFixtureMode ? MOCK_ACTION_PROPOSAL : null,
   );
-  const [auditTrail, setAuditTrail] = useState<ActionProposal[]>(
-    isFixtureMode ? MOCK_REMEDIATION_AUDIT : [],
-  );
+  const [auditTrail, setAuditTrail] = useState<ActionAudit[]>([]);
   const [actionBusy, setActionBusy] = useState<boolean>(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [listError, setListError] = useState<string | null>(null);
@@ -52,7 +50,9 @@ export const IncidentDetailView: React.FC<IncidentDetailViewProps> = ({
       }
       setDetail(MOCK_INCIDENT_DETAIL);
       setProposal(MOCK_ACTION_PROPOSAL);
-      setAuditTrail(MOCK_REMEDIATION_AUDIT);
+      setAuditTrail(MOCK_REMEDIATION_AUDIT.map((row, index) => ({
+        ...row, audit_id: index, actor: 'Fixture', occurred_at: 'Fixture', previous_status: null,
+      })));
       setListError(null);
       return;
     }
@@ -88,26 +88,15 @@ export const IncidentDetailView: React.FC<IncidentDetailViewProps> = ({
     if (!selectedIncidentId || isFixtureMode) return;
 
     let active = true;
+    setDetail(null);
+    setProposal(null);
+    setActionMessage(null);
     const fetchDetail = async () => {
       try {
         const d = await apiClient.getIncident(selectedIncidentId);
         if (active) {
           setDetail(d);
-          if (d.proposal_status !== 'none') {
-            setProposal({
-              action_id: `act-${d.incident_id}`,
-              incident_id: d.incident_id,
-              target_source_id: d.source_ids[0] || 'src-unknown',
-              playbook: 'SCALE_CONTAINER_MEMORY',
-              factor: 1.5,
-              simulation: true,
-              policy_verdict: 'APPROVED_BY_POLICY',
-              reason_code: 'TARGET_IN_SIMULATION_ALLOWLIST',
-              status: d.proposal_status as ActionProposal['status'],
-            });
-          } else {
-            setProposal(null);
-          }
+          setProposal(d.proposal ?? null);
         }
       } catch {
         if (active) setDetail(null);
@@ -125,8 +114,13 @@ export const IncidentDetailView: React.FC<IncidentDetailViewProps> = ({
 
     fetchDetail();
     fetchAudit();
+    const timer = window.setInterval(() => {
+      void fetchDetail();
+      void fetchAudit();
+    }, 2000);
     return () => {
       active = false;
+      window.clearInterval(timer);
     };
   }, [selectedIncidentId, isFixtureMode]);
 
@@ -448,7 +442,7 @@ export const IncidentDetailView: React.FC<IncidentDetailViewProps> = ({
                           onClick={handleRollback}
                           disabled={
                             actionBusy ||
-                            (proposal.status !== 'succeeded' && proposal.status !== 'failed')
+                            proposal.status !== 'succeeded'
                           }
                           title="Rollback to pre-incident snapshot if remediation fails or is revoked"
                         >
@@ -468,7 +462,7 @@ export const IncidentDetailView: React.FC<IncidentDetailViewProps> = ({
                       type="button"
                       className="btn-request-proposal"
                       onClick={handleRequestProposal}
-                      disabled={actionBusy}
+                      disabled={actionBusy || (!isFixtureMode && !detail.remediation_eligible)}
                     >
                       Request Remediation Proposal
                     </button>
@@ -484,7 +478,7 @@ export const IncidentDetailView: React.FC<IncidentDetailViewProps> = ({
                 {/* Remediation Audit Trail */}
                 {auditTrail.length > 0 && (
                   <div className="audit-trail-section mt-4">
-                    <h5 className="audit-trail-title">Chronological Remediation Audit Log</h5>
+                    <h5 className="audit-trail-title">Remediation Audit Log</h5>
                     <div className="table-responsive">
                       <table className="telemetry-table table-compact">
                         <thead>
@@ -495,11 +489,13 @@ export const IncidentDetailView: React.FC<IncidentDetailViewProps> = ({
                             <th scope="col">Playbook</th>
                             <th scope="col">Status</th>
                             <th scope="col">Reason Code</th>
+                            <th scope="col">Actor</th>
+                            <th scope="col">Time (UTC)</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {auditTrail.map((act) => (
-                            <tr key={act.action_id}>
+                          {auditTrail.filter((act) => act.incident_id === detail.incident_id).map((act) => (
+                            <tr key={act.audit_id}>
                               <td className="mono text-xs">{act.action_id}</td>
                               <td className="mono text-xs">{act.incident_id}</td>
                               <td className="mono text-xs">{act.target_source_id}</td>
@@ -508,6 +504,8 @@ export const IncidentDetailView: React.FC<IncidentDetailViewProps> = ({
                                 <span className="mono text-xs font-semibold">{act.status.toUpperCase()}</span>
                               </td>
                               <td className="mono text-xs text-muted">{act.reason_code}</td>
+                              <td className="mono text-xs">{act.actor}</td>
+                              <td className="mono text-xs">{act.occurred_at}</td>
                             </tr>
                           ))}
                         </tbody>

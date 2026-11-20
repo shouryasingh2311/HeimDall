@@ -22,6 +22,8 @@ from backend.saas.auth import Authenticator
 from backend.saas import benchmark
 from backend.saas.health import HealthMonitor
 from backend.saas.incidents import IncidentEngine
+from backend.saas.remediation import Remediation, public_action
+from backend.shared.remediation import CommandResult
 from backend.saas.storage import PayloadConflict, Storage
 from backend.shared.config import Credential, ServerSettings, read_settings
 from backend.shared.models import (
@@ -52,7 +54,8 @@ class BoundedJSONRoute(APIRoute):
                     raise HTTPException(413, "Metadata body too large")
                 data.extend(chunk)
             try:
-                json.loads(data.decode("utf-8"), object_pairs_hook=unique_keys)
+                if data:
+                    json.loads(data.decode("utf-8"), object_pairs_hook=unique_keys)
             except (ValueError, RecursionError):
                 raise HTTPException(422, "Invalid metadata schema") from None
 
@@ -93,6 +96,7 @@ def create_app(settings: ServerSettings, db_path: Path, dashboard: Path | None =
             storage.on_change = app.state.monitor.refresh_locked
             app.state.incidents = IncidentEngine(storage, settings)
             storage.analyze = app.state.incidents.analyze_locked
+            app.state.remediation = Remediation(storage, settings)
             watchdog = asyncio.create_task(app.state.monitor.watch())
             try:
                 yield
@@ -148,6 +152,8 @@ def create_app(settings: ServerSettings, db_path: Path, dashboard: Path | None =
         require_collector_identity(payload, credential)
         if region != credential.region or payload.source_id not in credential.source_ids:
             raise HTTPException(403, "Region or source scope mismatch")
+        if payload.simulation and payload.source_id not in credential.demo_source_ids:
+            raise HTTPException(403, "Source is not configured for simulation")
         if (parse_utc(payload.event_time_utc) - utc_now()).total_seconds() > 5:
             raise HTTPException(422, "Event timestamp is in the future")
         try:
@@ -233,7 +239,46 @@ def create_app(settings: ServerSettings, db_path: Path, dashboard: Path | None =
         detail = await request.app.state.incidents.detail(credential.tenant_id, incident_id)
         if detail is None:
             raise HTTPException(404, "Incident not found")
-        return detail
+        remediation = request.app.state.remediation
+        async with remediation.storage.lock:
+            proposal = await remediation.by_incident(credential.tenant_id, incident_id)
+            eligible = proposal is None and await remediation.target(credential.tenant_id, incident_id) is not None
+        return {**detail, "proposal": public_action(proposal) if proposal else None,
+                "proposal_status": proposal["status"] if proposal else "none", "remediation_eligible": eligible}
+
+    async def require_empty_action_request(request: Request):
+        if await request.body():
+            raise HTTPException(422, "The simulation accepts no action parameters")
+
+    @app.post("/api/v1/incidents/{incident_id}/proposal", dependencies=[Depends(require_empty_action_request)])
+    async def propose(incident_id: UuidString, request: Request, credential: Credential = Depends(operator)):
+        return await request.app.state.remediation.propose(credential, incident_id)
+
+    @app.post("/api/v1/remediation/{action_id}/approve", dependencies=[Depends(require_empty_action_request)])
+    async def approve(action_id: UuidString, request: Request, credential: Credential = Depends(operator)):
+        return await request.app.state.remediation.approve(credential, action_id)
+
+    @app.post("/api/v1/remediation/{action_id}/rollback", dependencies=[Depends(require_empty_action_request)])
+    async def rollback(action_id: UuidString, request: Request, credential: Credential = Depends(operator)):
+        return await request.app.state.remediation.rollback(credential, action_id)
+
+    @app.get("/api/v1/remediation/audit")
+    async def remediation_audit(
+        request: Request, credential: Credential = Depends(operator),
+        cursor: Annotated[int, Query(ge=1, le=2**63 - 1)] = 2**63 - 1,
+        limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    ):
+        return await request.app.state.remediation.audit_page(credential.tenant_id, cursor, limit)
+
+    @app.get("/api/v1/collector/commands")
+    async def collector_commands(request: Request, credential: Credential = Depends(collector)):
+        return await request.app.state.remediation.commands(credential)
+
+    @app.post("/api/v1/collector/commands/{command_id}/result")
+    async def collector_result(
+        command_id: UuidString, result: CommandResult, request: Request, credential: Credential = Depends(collector),
+    ):
+        return await request.app.state.remediation.complete(credential, command_id, result)
 
     @app.get("/api/v1/benchmarks")
     async def benchmarks(

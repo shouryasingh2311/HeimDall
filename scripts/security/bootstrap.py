@@ -81,6 +81,7 @@ def bootstrap(runtime: Path, saas_port=8443, local_base=9001):
         token, operator, local_token = (secrets.token_urlsafe(32) for _ in range(3))
         key = secrets.token_hex(32)
         sources = [f"{tenant}:{spec.node_id}" for spec in DemoSource.NODE_SPECS]
+        demo_memory_source = f"{tenant}:api-01"
         dependencies[tenant] = {
             pseudonym(key, f"{tenant}:{spec.node_id}"): [
                 pseudonym(key, f"{tenant}:{dependency}") for dependency in spec.depends_on
@@ -91,12 +92,14 @@ def bootstrap(runtime: Path, saas_port=8443, local_base=9001):
             "tenant_id": tenant, "collector_id": collector, "region": region, "token": token,
             "hmac_key": key, "local_token": local_token, "source_keys": sources,
             "saas_url": f"https://localhost:{saas_port}", "local_port": local_base + offset,
+            "demo_memory_source": demo_memory_source,
         })
         write_json(runtime / f"operator-{label}.json", {"tenant_id": tenant, "token": operator})
         credentials.extend([
             {"role": "collector", "tenant_id": tenant, "region": region, "collector_id": collector,
              "token_sha256": hashlib.sha256(token.encode()).hexdigest(),
-             "source_ids": [pseudonym(key, source) for source in sources]},
+             "source_ids": [pseudonym(key, source) for source in sources],
+             "demo_source_ids": [pseudonym(key, demo_memory_source)]},
             {"role": "operator", "tenant_id": tenant, "region": region,
              "token_sha256": hashlib.sha256(operator.encode()).hexdigest()},
         ])

@@ -152,7 +152,9 @@ export interface IncidentDetail {
   contributing_signals: ContributingSignal[];
   reasoning_steps: string[];
   recommended_action: string;
-  proposal_status: 'none' | 'proposed' | 'approved' | 'executing' | 'succeeded' | 'failed' | 'rolled_back';
+  proposal_status: 'none' | ActionProposal['status'];
+  proposal?: ActionProposal | null;
+  remediation_eligible?: boolean;
 }
 
 export interface ActionProposal {
@@ -165,6 +167,20 @@ export interface ActionProposal {
   policy_verdict: string;
   reason_code: string;
   status: 'proposed' | 'approved' | 'executing' | 'succeeded' | 'failed' | 'rollback_pending' | 'rolled_back' | 'rollback_failed';
+}
+
+export interface ActionAudit {
+  audit_id: number;
+  action_id: string;
+  incident_id: string;
+  target_source_id: string;
+  playbook: ActionProposal['playbook'];
+  status: ActionProposal['status'];
+  previous_status: ActionProposal['status'] | null;
+  reason_code: string;
+  policy_verdict: string;
+  actor: string;
+  occurred_at: string;
 }
 
 export interface BenchmarkRenderPayload {
