@@ -67,6 +67,7 @@ class CollectorSettings(StrictModel):
     source_keys: Annotated[list[str], Field(min_length=1)]
     saas_url: str = "https://localhost:8443"
     local_port: Annotated[int, Field(ge=1024, le=65535)] = 9001
+    outbox_capacity: Annotated[int, Field(ge=1, le=10000)] = 1000
 
     @field_validator("hmac_key")
     @classmethod
