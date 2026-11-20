@@ -216,7 +216,9 @@ def verify_dashboard(client, app_headers, local, local_headers, proof):
                     key: value for key, value in route.request.all_headers().items()
                     if key in {"authorization", "x-tenant-id", "content-type"}
                 }
-                response = client.request(route.request.method, path, headers=forwarded)
+                response = client.request(
+                    route.request.method, path, headers=forwarded, content=route.request.post_data_buffer,
+                )
                 route.fulfill(
                     status=response.status_code, body=response.content,
                     content_type=response.headers.get("content-type", "application/octet-stream"),
@@ -237,7 +239,10 @@ def verify_dashboard(client, app_headers, local, local_headers, proof):
             page.get_by_label("Tenant ID").fill(app_headers["X-Tenant-ID"])
             page.get_by_label("Operator token").fill(app_headers["Authorization"].split()[1])
             page.get_by_role("button", name="Connect dashboard").click()
-            page.get_by_role("button", name="Payload Egress Inspector", exact=True).click()
+            page.get_by_role("button", name="View Trends").first.click()
+            expect(page.get_by_role("dialog").get_by_text(proof["body_sha256"][:12] + "...")).to_be_visible()
+            page.get_by_role("button", name="Close dialog").click()
+            page.get_by_role("tab", name="Payload Egress Inspector", exact=True).click()
             page.get_by_label("Inspect Payload UUIDv5").fill(uuid)
             page.get_by_role("button", name="Inspect Metadata").click()
             expect(page.get_by_text(digest, exact=True)).to_be_visible()

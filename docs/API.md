@@ -136,7 +136,7 @@ Transmits collector liveness and health metadata.
 ### 2. Fleet & Health Endpoints
 
 #### GET `/api/v1/fleet`
-Returns current operational status of all collectors and sources for the authenticated tenant.
+Returns current health for the authenticated tenant. A collector appears after its first accepted heartbeat. A source with historical telemetry only is Poor and reports `no_live_telemetry`. Old replays do not replace a live health sample.
 
 * **Auth:** Bearer Token (Role: `operator`)
 * **Response Body (`200 OK`):**
@@ -146,49 +146,65 @@ Returns current operational status of all collectors and sources for the authent
       {
         "collector_id": "col-us-east-01",
         "health": "Excellent",
-        "reasons": ["HEARTBEAT_OK", "QUEUE_EMPTY"],
+        "reasons": ["nominal"],
         "last_heartbeat_utc": "2026-11-20T14:30:00Z",
+        "version": "0.1.0",
+        "config_status": "valid",
+        "cpu_pct": 2.1,
         "queue_depth": 0,
         "rss_mb": 48.5
       }
     ],
     "sources": [
       {
-        "source_id": "node-db-01",
+        "source_id": "src-14dc2d2f7dd0e59e7342dcf858246b98",
         "collector_id": "col-us-east-01",
         "health": "Good",
-        "reasons": ["METRICS_NORMAL"],
+        "reason_codes": ["cpu"],
         "latest_event_time_utc": "2026-11-20T14:30:00Z",
-        "latest_metrics": {
-          "cpu_pct": 45.2,
+        "last_received_at_utc": "2026-11-20T14:30:00.100Z",
+        "payload_uuid": "f47ac10b-58cc-5372-a567-0e02b2c3d479",
+        "metrics": {
+          "cpu_pct": 72.0,
           "memory_pct": 68.1,
-          "latency_ms": 12.4
+          "disk_used_pct": 50.0,
+          "latency_ms": 12.4,
+          "packet_loss_pct": 0.0,
+          "service_available": true,
+          "connectivity": true,
+          "disk_read_bps": null,
+          "disk_write_bps": null,
+          "net_tx_bps": null,
+          "net_rx_bps": null
         }
       }
-    ]
+    ],
+    "server_time_utc": "2026-11-20T14:30:01Z"
   }
   ```
 
 ---
 
 #### GET `/api/v1/transitions`
-Retrieves chronological health state transition records with reason codes.
+Returns health state changes newest first, with UTC observation timestamps and reasons.
 
 * **Auth:** Bearer Token (Role: `operator`)
-* **Query Parameters:** `source_id` (optional), `limit` (int, default 50)
+* **Query Parameters:** `cursor` (use the previous `next_cursor`), `limit` (1–200, default 50)
 * **Response Body (`200 OK`):**
   ```json
   {
-    "transitions": [
+    "items": [
       {
-        "transition_id": 104,
-        "source_id": "node-db-01",
+        "transition_id": "104",
+        "entity_id": "src-14dc2d2f7dd0e59e7342dcf858246b98",
+        "entity_type": "source",
         "from_state": "Good",
         "to_state": "Fair",
-        "reason_code": "WARN_ELEVATED_LATENCY",
+        "reason_codes": ["latency"],
         "timestamp_utc": "2026-11-20T14:28:15Z"
       }
-    ]
+    ],
+    "next_cursor": null
   }
   ```
 
@@ -298,14 +314,19 @@ Registers client-side first visible render timing for latency evaluation (`V10`)
   ```json
   {
     "run_id": "bench-01",
-    "payload_uuid": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+    "session_id": "browser-a",
+    "payload_uuid": "f47ac10b-58cc-5372-a567-0e02b2c3d479",
     "rendered_at_utc": "2026-11-20T14:30:02.120Z"
   }
   ```
 * **Response Body (`200 OK`):**
   ```json
   {
-    "status": "recorded",
-    "delta_ms": 2120
+    "accepted": true,
+    "first_recorded": true
   }
   ```
+
+#### GET `/api/v1/benchmarks`
+
+Operator only. Accepts `run_id` (default `default-run`) and an optional `session_id`. The five-minute window uses the SaaS receive time of approved payloads. It reports `live`, `replay_or_delayed`, and `all` cohorts with eligible, missing, clock-flagged, and valid counts and nearest-rank p50/p95 in milliseconds. Historical records and records received at least 10 seconds after event time are in the replay or delayed cohort. The response also includes measured offline observations. `alert_delay_ms` is null pending Phase 5.

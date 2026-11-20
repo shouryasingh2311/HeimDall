@@ -12,7 +12,6 @@ import type {
   IncidentSummary,
   IncidentDetail,
   ActionProposal,
-  BenchmarkSummary,
   ScenarioResult,
 } from '../types/contracts';
 
@@ -577,19 +576,6 @@ export const MOCK_SCENARIO_RESULTS: ScenarioResult[] = [
     reason_code: 'DEDUP_AND_ORDER_VERIFIED',
   },
 ];
-
-export const MOCK_BENCHMARK_SUMMARY: BenchmarkSummary = {
-  render_count: 42,
-  render_p50_ms: 18.4,
-  render_p95_ms: 45.2,
-  alert_delay_p50_ms: 820.0,
-  alert_delay_p95_ms: 1450.0,
-  offline_recovery_seconds: 4.2,
-  timing_flags: {
-    clock_uncertainty_under_100ms: true,
-    first_render_dedup_active: true,
-  },
-};
 
 export const MOCK_REMEDIATION_AUDIT: ActionProposal[] = [
   {
