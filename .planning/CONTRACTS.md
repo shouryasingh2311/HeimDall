@@ -76,6 +76,8 @@ Lifecycle: proposed -> approved -> executing -> succeeded/failed; succeeded -> r
 
 ## Local APIs and simulator
 
+The optional `simulation: true` metric field is set by the explicit demo runner and accepted only for sources allowlisted on the collector credential. A proposal or scale dispatch requires an active memory incident with demo evidence. Proposal, approval, and rollback requests have empty bodies. The collector receives scoped commands with a fixed playbook and factor and returns bounded capacity evidence. Actual recovery is evaluated from subsequent telemetry.
+
 Loopback GET /api/local/audit returns bounded raw preview, approved bytes, ID, digest and sent/ACK status. GET /api/local/status returns queue/transport state. POST /api/local/scenarios/{1..8} accepts run_id/seed. POST /api/local/reset only resets completed demo fixtures after pending deliveries/actions finish.
 Local APIs require a per-run session token, exact Host/Origin allow-list, no wildcard CORS and escaped text rendering. Token never goes in URL. M3 writes presentation; M1 owns all endpoint/security plumbing.
 

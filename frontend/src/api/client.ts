@@ -18,6 +18,7 @@ import type {
   IncidentSummary,
   IncidentDetail,
   ActionProposal,
+  ActionAudit,
   BenchmarkRenderPayload,
   BenchmarkRenderResponse,
   BenchmarkSummary,
@@ -239,8 +240,11 @@ export class CicadaApiClient {
     });
   }
 
-  public async getRemediationAudit(): Promise<ActionProposal[]> {
-    return this.request<ActionProposal[]>('/api/v1/remediation/audit', { method: 'GET' }, 'remediation-audit');
+  public async getRemediationAudit(): Promise<ActionAudit[]> {
+    const page = await this.request<{ items: ActionAudit[]; next_cursor: string | null }>(
+      '/api/v1/remediation/audit', { method: 'GET' }, 'remediation-audit',
+    );
+    return page.items;
   }
 
   public async getScenarioResults(): Promise<ScenarioResult[]> {

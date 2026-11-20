@@ -9,11 +9,10 @@ from pydantic import ValidationError
 
 from backend.collector.buffer_queue import Outbox
 from backend.collector.inspector import AuditPreview
-from backend.collector.transport import ReceiptMismatch, Transport
+from backend.collector.transport import DELIVERY_ERRORS, Transport
 from backend.shared.models import MetadataPayload, canonical_bytes
 
 LOG = logging.getLogger("cicada.collector")
-DELIVERY_ERRORS = (httpx.HTTPError, ReceiptMismatch, ValidationError)
 QUARANTINE_CODES = {400: "invalid_body", 409: "uuid_conflict", 413: "body_too_large", 422: "invalid_body"}
 
 

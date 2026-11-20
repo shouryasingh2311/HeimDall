@@ -276,37 +276,45 @@ Returns granular explanation and contributing signals for a specific incident.
 
 ### 4. Remediation & Rollback Endpoints
 
+#### POST `/api/v1/incidents/{id}/proposal`
+
+An operator requests the fixed playbook for an active memory incident on an allowed demo source. The request body is empty. Repeating the request returns the existing proposal.
+
 #### POST `/api/v1/remediation/{id}/approve`
-Authorizes an assisted autonomous remediation action.
+Rechecks policy and queues the approved simulation. The request body is empty. Approval leaves the action pending until the collector returns its result.
 
 * **Auth:** Bearer Token (Role: `operator`)
 * **Response Body (`200 OK`):**
   ```json
   {
-    "action_id": "act-20261120-01",
-    "incident_id": "inc-20261120-01",
+    "action_id": "2452117f-e08e-4a10-824b-92a6fc3588e2",
+    "incident_id": "67aa850c-22d3-4c63-aeb2-60cbc68eb54b",
     "status": "approved",
-    "target_source_id": "node-app-01",
+    "target_source_id": "src-14dc2d2f7dd0e59e7342dcf858246b98",
     "playbook": "SCALE_CONTAINER_MEMORY",
-    "enqueued_at_utc": "2026-11-20T14:26:00Z"
+    "factor": 1.5,
+    "simulation": true,
+    "policy_verdict": "demo_policy_allowed",
+    "reason_code": "queued_scale"
   }
   ```
 
 ---
 
 #### POST `/api/v1/remediation/{id}/rollback`
-Triggers an atomic rollback to the pre-remediation snapshot.
+Queues a snapshot rollback for a successful demo action. The request body is empty. The initial response has `status: rollback_pending`. It uses the same response shape as approval.
 
-* **Auth:** Bearer Token (Role: `operator`)
-* **Response Body (`200 OK`):**
-  ```json
-  {
-    "action_id": "act-20261120-01",
-    "status": "rolled_back",
-    "target_source_id": "node-app-01",
-    "restored_at_utc": "2026-11-20T14:28:00Z"
-  }
-  ```
+#### GET `/api/v1/remediation/audit`
+
+Operator only. Returns audit `items` newest first with an optional `next_cursor`. Each item includes the actor, action and incident IDs, target, previous and current status, policy verdict, reason, and UTC occurrence time.
+
+#### GET `/api/v1/collector/commands`
+
+Collector only. Returns pending command `items` scoped to the authenticated collector and its allowed demo sources. Each command includes the fixed playbook, factor, action and command IDs, tenant, target, and `scale` or `rollback`.
+
+#### POST `/api/v1/collector/commands/{id}/result`
+
+Collector only. Accepts the typed result for a dispatched command, including `simulation: true`, outcome, reason code, and before and after simulated capacity on success. Repeating an identical result is idempotent. A conflicting result returns 409.
 
 ---
 

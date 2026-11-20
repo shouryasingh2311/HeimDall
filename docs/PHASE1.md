@@ -47,4 +47,14 @@ Phase 5 dependency correlation uses the graph in `saas.json`. Bootstrap a new ru
 
 Phase 1 tests exercise actual collector and SaaS processes with temporary certificates and databases. Set CICADA_TEST_DASHBOARD to a built dashboard directory to also verify the receipt renders in a browser. Set CICADA_TEST_BROWSER to msedge or use a Playwright-installed Chromium.
 
-V00 still needs an actual organizer sample. V02 covers the implemented collector/operator routes. Action and subscription checks apply once those capabilities exist.
+V00 still needs an actual organizer sample. V02 covers the implemented collector and operator routes, including demo actions.
+
+## Phase 6 memory simulation
+
+Use a new runtime to get the demo source permission. Stop any existing SaaS and collector that use ports 8443 and 9001. Run the bootstrap command once, then start SaaS and the collector in separate PowerShell terminals from the repo root.
+
+    .venv/Scripts/python -m scripts.security.bootstrap --runtime .cicada/remediation-demo
+    .venv/Scripts/python -m backend.saas.main --runtime .cicada/remediation-demo --dashboard frontend/dist
+    .venv/Scripts/python -m backend.collector.daemon --runtime .cicada/remediation-demo --demo-memory-pressure
+
+Connect to the dashboard with `.cicada/remediation-demo/operator-alpha.json`. Open **AIOps Incidents & Remediation**, select the memory incident, request a proposal, and click **Approve**. Wait for **Succeeded**, then open the affected source's trends to see new samples drop from about 98% to 65%. The incident resolves after five normal samples. Return to the original incident and click **Rollback**. Wait for **Rolled back** and verify the restored pressure in fresh trend data. The audit log shows each action, actor, and time. Keep the same runtime to show that the capacity and snapshot survive a restart.

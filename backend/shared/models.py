@@ -97,6 +97,7 @@ class MetadataPayload(CollectorIdentity):
     metrics: Metrics | None
     security: SecuritySummary | None
     severity: Literal["info", "warning", "critical"]
+    simulation: Literal[True] | None = Field(default=None, exclude_if=lambda value: value is None)
 
     @field_validator("event_time_utc")
     @classmethod
@@ -116,7 +117,7 @@ class MetadataPayload(CollectorIdentity):
         if self.event_type == "metric":
             valid = self.metrics is not None and self.security is None
         else:
-            valid = self.metrics is None and self.security is not None
+            valid = self.metrics is None and self.security is not None and self.simulation is None
         if not valid:
             raise ValueError("Payload does not match event type")
         return self

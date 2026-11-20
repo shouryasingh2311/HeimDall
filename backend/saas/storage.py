@@ -13,6 +13,7 @@ import aiosqlite
 from backend.saas.health import SCHEMA as HEALTH_SCHEMA
 from backend.saas.benchmark import SCHEMA as BENCHMARK_SCHEMA
 from backend.saas.incidents import SCHEMA as INCIDENT_SCHEMA
+from backend.saas.remediation import SCHEMA as REMEDIATION_SCHEMA
 
 from backend.shared.models import (
     CollectorHeartbeat, IngestReceipt, MetadataPayload, PayloadDetail, canonical_bytes,
@@ -76,7 +77,7 @@ class Storage:
             await db.execute("PRAGMA journal_mode=WAL")
             await db.execute("PRAGMA synchronous=FULL")
             await db.execute("PRAGMA foreign_keys=ON")
-            await db.executescript(SCHEMA + HEALTH_SCHEMA + BENCHMARK_SCHEMA + INCIDENT_SCHEMA)
+            await db.executescript(SCHEMA + HEALTH_SCHEMA + BENCHMARK_SCHEMA + INCIDENT_SCHEMA + REMEDIATION_SCHEMA)
             yield cls(db)
 
     @asynccontextmanager

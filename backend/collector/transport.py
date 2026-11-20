@@ -6,13 +6,22 @@ import ssl
 from urllib.parse import urlsplit
 
 import httpx
+from pydantic import ValidationError
 
 from backend.shared.config import CollectorSettings
-from backend.shared.models import CollectorHeartbeat, IngestReceipt, MetadataPayload, canonical_bytes
+from backend.shared.models import CollectorHeartbeat, IngestReceipt, MetadataPayload, StrictModel, canonical_bytes
+from backend.shared.remediation import CommandResult, DemoCommand
 
 
 class ReceiptMismatch(Exception):
     pass
+
+
+DELIVERY_ERRORS = (httpx.HTTPError, ReceiptMismatch, ValidationError)
+
+
+class CommandPage(StrictModel):
+    items: list[DemoCommand]
 
 
 class Transport:
@@ -48,4 +57,13 @@ class Transport:
 
     async def heartbeat(self, beat: CollectorHeartbeat):
         response = await self.client.post("/api/v1/heartbeats", content=canonical_bytes(beat))
+        response.raise_for_status()
+
+    async def commands(self) -> list[DemoCommand]:
+        response = await self.client.get("/api/v1/collector/commands")
+        response.raise_for_status()
+        return CommandPage.model_validate_json(response.content).items
+
+    async def command_result(self, command_id: str, result: CommandResult) -> None:
+        response = await self.client.post(f"/api/v1/collector/commands/{command_id}/result", content=canonical_bytes(result))
         response.raise_for_status()
