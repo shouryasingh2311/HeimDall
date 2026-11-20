@@ -9,9 +9,11 @@ Privacy-first distributed observability platform (Smart Observability Hackathon 
 - **Security / Wire**: TLS with verified CA, HMAC pseudonyms, zero-raw-log egress.
 
 ## Build & Run
-- **Bootstrap Runtime**: `.venv/Scripts/python -m scripts.security.bootstrap --runtime .heimdal/demo`
-- **Start SaaS Backend**: `.venv/Scripts/python -m backend.saas.main --runtime .heimdal/demo --dashboard frontend/dist`
-- **Start Collector**: `.venv/Scripts/python -m backend.collector.daemon --runtime .heimdal/demo --scenarios`
+- **1-Command Docker**: `docker compose up` (builds frontend, installs python deps, bootstraps certs & tokens, starts both services)
+- **1-Command Native**: `.\start.ps1` (Windows) or `./start.sh` (Linux/macOS)
+- **Manual Bootstrap**: `.venv/Scripts/python -m scripts.security.bootstrap --runtime .heimdal/demo`
+- **Manual SaaS**: `.venv/Scripts/python -m backend.saas.main --runtime .heimdal/demo --dashboard frontend/dist`
+- **Manual Collector**: `.venv/Scripts/python -m backend.collector.daemon --runtime .heimdal/demo --scenarios`
 - **Frontend Dev**: `cd frontend && npm run dev`
 - **Frontend Build**: `cd frontend && npm run build`
 - **Frontend Lint**: `cd frontend && npm run lint`

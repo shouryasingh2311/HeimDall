@@ -228,19 +228,62 @@ monitor/
 
 ---
 
-## Getting Started & Local Setup
+## Getting Started & Deployment
 
-### Prerequisites
+Choose the setup that fits your target environment:
+
+### Method A: One-Command Deployment with Docker (Recommended)
+No Python, Node.js, or virtual environments required on the host system.
+
+```bash
+# Clone and enter the repository
+git clone https://github.com/shouryasingh2311/HeimDall.git
+cd HeimDall
+
+# Build and start all services
+docker compose up
+```
+
+Once running:
+* **Operations Dashboard**: `https://localhost:8443` (served over HTTPS with React UI)
+* **Scenario Verification**: `http://localhost:9001/scenarios` (isolated chaos engine)
+* **Local Egress Proof**: `http://localhost:9001/audit` (zero-raw-log loopback proof)
+* **Operator Token**: Printed directly in the startup banner for easy copy-paste.
+
+---
+
+### Method B: One-Command Native Quick Start (No Docker)
+If Docker is not available on the target system, automated startup scripts handle virtual environment creation, dependencies, frontend compilation, and TLS bootstrap automatically:
+
+**On Windows (PowerShell):**
+```powershell
+git clone https://github.com/shouryasingh2311/HeimDall.git
+cd HeimDall
+.\start.ps1
+```
+
+**On Linux / macOS (Bash):**
+```bash
+git clone https://github.com/shouryasingh2311/HeimDall.git
+cd HeimDall
+chmod +x start.sh
+./start.sh
+```
+
+---
+
+### Method C: Manual Development Setup
+
+#### Prerequisites
 * Python: 3.11 or newer.
 * Node.js: v18.0.0 or newer with `npm`.
 * Operating System: Windows, macOS, or Linux.
 
-### 1. Environment Setup
-
+#### 1. Environment Setup
 ```bash
 # Clone the repository
 git clone https://github.com/shouryasingh2311/HeimDall.git
-cd monitor
+cd HeimDall
 
 # Backend setup (Python virtual environment)
 python -m venv .venv
@@ -249,22 +292,23 @@ python -m venv .venv
 # Linux/macOS:
 source .venv/bin/activate
 
-# Install locked dependencies
-pip install -r requirements.lock
+# Install dependencies
+pip install -e .
 
 # Frontend setup
 cd frontend
 npm install
+npm run build
 cd ..
 ```
 
-### 2. Bootstrap Local Certificates & Credentials
+#### 2. Bootstrap Local Certificates & Credentials
 Heimdal enforces TLS and cryptographic tokens. Run the security bootstrap tool to generate the local development CA, localhost SAN certificates, and tenant credentials in `.heimdal/dev/`:
 ```bash
 python -m scripts.security.bootstrap
 ```
 This provisions:
-* CA root (`.heimdal/dev/ca.pem`) and server certificates (`saas.crt`, `saas.key`).
+* CA root (`.heimdal/dev/ca.pem`) and server certificates (`server.pem`, `server.key`).
 * Tenant Alpha credentials: `.heimdal/dev/collector-alpha.json` and `.heimdal/dev/operator-alpha.json`.
 * Tenant Beta credentials: `.heimdal/dev/collector-beta.json` and `.heimdal/dev/operator-beta.json`.
 
@@ -273,12 +317,12 @@ To export OpenAPI schemas and synthetic fixtures for frontend development:
 python -m scripts.security.export_contracts
 ```
 
-### 3. Running Central SaaS Service
+#### 3. Running Central SaaS Service
 Start the central SaaS platform over HTTPS:
 ```bash
-python -m backend.saas.main
+python -m backend.saas.main --dashboard frontend/dist
 ```
-* SaaS API runs at: `https://localhost:8443`
+* SaaS API & Dashboard: `https://localhost:8443`
 * Public health check: `https://localhost:8443/healthz`
 * Query fleet status with generated operator credentials:
   ```powershell
@@ -286,30 +330,17 @@ python -m backend.saas.main
   curl.exe --cacert .heimdal/dev/ca.pem -H "Authorization: Bearer $($operator.token)" -H "X-Tenant-ID: $($operator.tenant_id)" https://localhost:8443/api/v1/fleet
   ```
 
-### 4. Running the Local Collector
+#### 4. Running the Local Collector
 In a separate terminal, start the local collector daemon:
 ```bash
-python -m backend.collector.daemon
+python -m backend.collector.daemon --scenarios
 ```
 * To run for Tenant Beta: `python -m backend.collector.daemon --tenant beta`
 * To run a single batch and exit: `python -m backend.collector.daemon --once`
 * To ingest local JSONL logs: `python -m backend.collector.daemon --input path/to/events.jsonl`
 * Local Egress Proof Panel: Open `http://localhost:9001/audit` in your browser. Enter the `local_token` from `.heimdal/dev/collector-alpha.json` to inspect the raw input preview, sanitized outbound bytes, and matching SaaS receipt.
 
-### 5. Running the Operations Dashboard
-In a third terminal:
-```bash
-cd frontend
-npm run dev
-```
-* Dashboard UI: `http://localhost:5173`
-* Alternatively, build the static UI and let SaaS serve it directly:
-  ```bash
-  cd frontend && npm run build && cd ..
-  python -m backend.saas.main --dashboard frontend/dist
-  ```
-
-### 6. Running Validation Suite
+#### 5. Running Validation Suite
 ```bash
 # Run core security, schema, and deduplication tests
 python -m pytest tests/core
@@ -350,10 +381,10 @@ The project is structured for a 3-member parallel development workflow:
 ## Status and Limitations
 
 ### Current Status
-* Phases 1 through 4 are integrated on `main`. Phases 5 through 8 UI views are complete on the dashboard branch.
-* Gates G0 through G3 achieved.
-* Runtime includes HTTPS SaaS, loopback Collector daemon, local HTML proof inspector, and React 19 / Vite dashboard.
-* Checks V01, V02, V03, V04, V05, V07, V08, V09, V10, V11 verified on synthetic test inputs.
+* All 8 Phases (Phases 1 through 8) are fully integrated on `main`.
+* Gates G0 through G6 achieved.
+* Runtime includes HTTPS SaaS, loopback Collector daemon, local HTML proof inspector, scenario verification engine, and React 19 / Vite dashboard.
+* Checks V01 through V12 verified with synthetic and live test evidence.
 * Official organizer telemetry stream format remains pending; operating on verified demo fallback.
 
 ### Scoped Boundaries
