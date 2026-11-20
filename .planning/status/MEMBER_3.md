@@ -2,7 +2,7 @@
 
 Status: in progress (Scenario harness, benchmark engine & black-box tests completed).
 Branch: feat/fixtures-validation.
-Latest commit: pending push.
+Latest commit: ce81e90.
 Completed task/requirement IDs:
 - SIMU-01: Deterministic demo source (`backend/collector/demo_source.py`), JSONL adapter (`backend/collector/adapters/jsonl_adapter.py`), and organizer adapter with labelled fallback (`backend/collector/adapters/organizer_adapter.py`).
 - SIMU-02, PRIV-01..05: Secret test fixtures (`tests/scenarios/fixtures/secrets.jsonl`) and local-only proof panel (`backend/collector/static/proof.html`).
