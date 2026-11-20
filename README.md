@@ -44,12 +44,14 @@ The system enforces a clear boundary between local collection and central storag
 
 | Boundary Domain | Tier 1: Customer Local Collector | Tier 2: Central SaaS Platform |
 |---|---|---|
-| Raw Logs and Payloads | Stored locally in a bounded ring buffer (500 records or 15 minutes). | Not transmitted. Dropped by local policy. |
-| Passwords and API Keys | Scrubbed with regex patterns and strict schema allow-lists. | Rejected if present with HTTP 422. |
-| Source Identifiers | Salted HMAC pseudonymization (`source_id = HMAC(source_name, secret)`). | Opaque pseudonym IDs only; mapping cannot be reversed. |
+| Raw Logs and Payloads | A bounded local preview keeps up to 500 records for 15 minutes. | Raw fields are excluded from approved payloads. |
+| Passwords and API Keys | Known formats are masked in the local preview. | The metadata schema rejects unapproved fields. |
+| Source Identifiers | Source names are pseudonymized using a tenant HMAC key. | Receives opaque source IDs. |
 | Security Events | Evaluates auth failures locally; produces aggregated threat summaries. | Receives failure counts, risk scores, and pseudonymous attacker IDs. |
 | Egress Inspection | Serves an inspection panel over loopback HTTP (`127.0.0.1:9001`). | Receives SHA-256 wire digest matching local outbound bytes. |
 | Network Security | Verified HTTPS with CA and hostname checks to the assigned ingest route. | Multi-tenant storage scoped by tenant ID. |
+
+## System Architecture
 
 ```
 [ Customer Local Environment ]                        [ Central SaaS Boundary ]
@@ -108,7 +110,7 @@ Monitored sources and collectors are evaluated into one of four states:
 * Excellent: All metrics report within expected baseline boundaries.
 * Good: Minor metric drift without operational failure.
 * Fair: Elevated latency, packet loss, or warning thresholds reached.
-* Poor: Collector offline (heartbeat absent >60s), severe resource exhaustion, or security breach.
+* Poor: Collector offline (55-second heartbeat expiry with a one-second watchdog), severe resource exhaustion, or security breach.
 * Late or replayed events do not modify current live health. State transitions are timestamped in UTC and stored with machine-readable reason codes.
 
 ### 4. Explainable AIOps Anomaly Detection & Incident Correlation
@@ -310,7 +312,7 @@ python -m pytest tests/scenarios
 node tests/ui/test-client.mjs
 ```
 
-For the browser enabled regression and the live eight scenario rehearsal, follow the [verification commands](docs/RUNBOOK.md#4-run-the-automated-checks-for-phases-18).
+For the full regression with Edge and all eight scenarios, follow the [verification commands](docs/RUNBOOK.md#4-run-the-automated-checks-for-phases-18).
 
 ---
 

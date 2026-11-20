@@ -330,3 +330,9 @@ Registers client-side first visible render timing for latency evaluation (`V10`)
 #### GET `/api/v1/benchmarks`
 
 Operator only. Accepts `run_id` (default `default-run`) and an optional `session_id`. The five-minute window uses the SaaS receive time of approved payloads. It reports `live`, `replay_or_delayed`, and `all` cohorts with eligible, missing, clock-flagged, and valid counts and nearest-rank p50/p95 in milliseconds. Historical records and records received at least 10 seconds after event time are in the replay or delayed cohort. The response also includes measured offline observations. `alert_delay_ms` is the p95 from breach event time to the creation time recorded by the alert's committed transaction. `alert_timing` reports valid and clock-flagged counts for the tenant, across dashboard sessions in the window.
+
+### 6. Scenario results
+
+#### GET `/api/v1/scenario-results`
+
+Operator only. Returns the latest reported run for each scenario in the operator's tenant. If no final result arrives within the scenario's execution limit plus 30 seconds, the view shows `blocked` with reason `result_not_reported`. A genuine final report can still update that run.
