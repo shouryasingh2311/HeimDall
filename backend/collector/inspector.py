@@ -9,34 +9,41 @@ from time import monotonic
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, Response
+from uuid import UUID
 
 from backend.collector.demo_source import RawEvent
+from backend.collector.scrubber import scrub_preview
 from backend.shared.config import CollectorSettings
 from backend.shared.models import MetadataPayload
 
 PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8">
 <title>Cicada local egress proof</title><script src="/audit.js" defer></script></head><body>
 <h1>Local egress proof</h1>
-<p>Use the collector's local session token to inspect the latest record.</p>
-<form><label>Local session token <input type="password" required autocomplete="off"></label>
-<button>Fetch latest record</button></form><p id="status" role="status"></p>
-<h2>Local input preview</h2><pre id="raw"></pre>
+<p>Copy only the payload UUID and SHA-256 digest to the SaaS window.</p>
+<form><label>Local session token <input id="token" type="password" required autocomplete="off"></label>
+<label>Payload UUID (optional) <input id="lookup" autocomplete="off"></label>
+<button>Fetch local evidence</button></form><p id="status" role="status"></p>
+<h2>Payload UUID and SHA-256</h2><pre id="identity"></pre>
+<h2>Local input preview (known credentials masked)</h2><pre id="raw"></pre>
 <h2>Exact approved outbound bytes</h2><pre id="approved"></pre>
 <h2>Delivery and receipt</h2><pre id="receipt"></pre></body></html>"""
 
 JS = """document.querySelector('form').addEventListener('submit', async (event) => {
   event.preventDefault();
   const set = (id, text) => { document.getElementById(id).textContent = text; };
-  for (const id of ['status', 'raw', 'approved', 'receipt']) set(id, '');
+  for (const id of ['status', 'identity', 'raw', 'approved', 'receipt']) set(id, '');
   try {
-    const token = document.querySelector('input').value;
-    const response = await fetch('/api/local/audit', {
+    const token = document.getElementById('token').value;
+    const uuid = document.getElementById('lookup').value.trim();
+    const path = uuid ? '/api/local/audit?payload_uuid=' + encodeURIComponent(uuid) : '/api/local/audit';
+    const response = await fetch(path, {
       headers: { Authorization: 'Bearer ' + token }, cache: 'no-store'
     });
     if (!response.ok) throw new Error('Inspection unavailable (' + response.status + ').');
     const {items} = await response.json();
     if (!items.length) { set('status', 'No retained records.'); return; }
     const {raw_preview, approved_body, ...receipt} = items[0];
+    set('identity', receipt.payload_uuid + '\\n' + receipt.body_sha256);
     set('raw', raw_preview || '(No raw text)');
     set('approved', approved_body);
     set('receipt', JSON.stringify(receipt, null, 2));
@@ -61,7 +68,7 @@ class AuditPreview:
         record = {
             "payload_uuid": payload.payload_uuid,
             "policy_version": payload.policy_version,
-            "raw_preview": event.raw_text[:8192] if isinstance(event.raw_text, str) else None,
+            "raw_preview": scrub_preview(event.raw_text[:8192]) if isinstance(event.raw_text, str) else None,
             "approved_body": approved.decode(),
             "body_sha256": sha256(approved).hexdigest(),
             "state": "constructed",
@@ -73,6 +80,10 @@ class AuditPreview:
     def latest(self, limit: int = 20):
         self.purge()
         return [record for _, record in reversed(self.records)][:limit]
+
+    def by_id(self, payload_uuid: str):
+        self.purge()
+        return next((record for _, record in reversed(self.records) if record["payload_uuid"] == payload_uuid), None)
 
 
 def create_inspector(settings: CollectorSettings, audit: AuditPreview) -> FastAPI:
@@ -122,8 +133,17 @@ def create_inspector(settings: CollectorSettings, audit: AuditPreview) -> FastAP
         return Response(JS, media_type="text/javascript")
 
     @app.get("/api/local/audit")
-    async def records(request: Request):
+    async def records(request: Request, payload_uuid: str | None = None):
         check_token(request)
+        if payload_uuid is not None:
+            try:
+                key = str(UUID(payload_uuid))
+            except ValueError:
+                raise HTTPException(400, "Invalid payload UUID") from None
+            result = audit.by_id(key)
+            if result is None:
+                raise HTTPException(404, "No retained record for this UUID")
+            return {"items": [result]}
         return {"items": audit.latest()}
 
     @app.get("/api/local/status")
