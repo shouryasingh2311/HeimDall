@@ -147,9 +147,14 @@ def verify_scenario_dashboard(client, alpha, beta):
     origin = str(client.base_url).rstrip("/")
     with sync_playwright() as playwright, playwright.chromium.launch(channel=os.getenv("HEIMDAL_TEST_BROWSER")) as browser:
         page = browser.new_page()
+        hold_scenarios = False
+        pending_scenarios = []
 
         def forward(route):
             request = route.request
+            if hold_scenarios and request.url == f"{origin}/api/v1/scenario-results":
+                pending_scenarios.append(route)
+                return
             headers = {key: value for key, value in request.all_headers().items()
                        if key in {"authorization", "x-tenant-id", "content-type"}}
             response = client.request(request.method, request.url.removeprefix(origin), headers=headers,
@@ -172,5 +177,15 @@ def verify_scenario_dashboard(client, alpha, beta):
         open_scenarios(beta)
         expect(page.get_by_text("No scenario verification results reported yet.", exact=False)).to_be_visible()
         expect(page.get_by_text("8 / 8", exact=True)).to_have_count(0)
+        page.get_by_role("button", name="Use Mock Fixtures").click()
+        expect(page.get_by_text("fixture-scenario-1", exact=False)).to_be_visible()
+        hold_scenarios = True
+        page.get_by_role("button", name="Switch to Live API").click()
+        expect(page.get_by_text("fixture-scenario-1", exact=False)).to_have_count(0)
+        expect(page.get_by_text("8 / 8", exact=True)).to_have_count(0)
+        hold_scenarios = False
+        for route in pending_scenarios:
+            forward(route)
+        expect(page.get_by_text("No scenario verification results reported yet.", exact=False)).to_be_visible()
         open_scenarios(alpha)
         expect(page.get_by_text("8 / 8", exact=True)).to_be_visible()
