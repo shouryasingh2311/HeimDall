@@ -9,9 +9,10 @@ import {
 
 interface IncidentDetailViewProps {
   isFixtureMode: boolean;
+  onInspectPayload?: (uuid: string) => void;
 }
 
-export const IncidentDetailView: React.FC<IncidentDetailViewProps> = ({ isFixtureMode }) => {
+export const IncidentDetailView: React.FC<IncidentDetailViewProps> = ({ isFixtureMode, onInspectPayload }) => {
   const [incidents, setIncidents] = useState<IncidentSummary[]>(
     isFixtureMode ? MOCK_INCIDENTS_SUMMARY : [],
   );
@@ -234,7 +235,20 @@ export const IncidentDetailView: React.FC<IncidentDetailViewProps> = ({ isFixtur
                           <td className="mono font-semibold text-alert">
                             {sig.z_score !== null ? `+${sig.z_score.toFixed(2)}` : '—'}
                           </td>
-                          <td className="mono text-xs text-muted">{sig.payload_uuid}</td>
+                          <td className="mono text-xs">
+                            {onInspectPayload ? (
+                              <button
+                                type="button"
+                                className="text-btn mono text-xs"
+                                onClick={() => onInspectPayload(sig.payload_uuid)}
+                                title="Inspect this payload in Egress Inspector"
+                              >
+                                {sig.payload_uuid} &rarr;
+                              </button>
+                            ) : (
+                              <span className="text-muted">{sig.payload_uuid}</span>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>

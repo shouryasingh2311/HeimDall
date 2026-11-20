@@ -48,6 +48,36 @@ globalThis.fetch = async (url, options) => {
       }),
     };
   }
+  if (url.includes('/api/v1/sources/')) {
+    return {
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({
+        items: [
+          {
+            payload_uuid: 'uuid-src-hist-1',
+            tenant_id: 'tenant-alpha',
+            source_id: 'src-test-01',
+            collector_id: 'col-1',
+            event_time_utc: '2026-11-20T14:00:00.000Z',
+            metrics: { cpu_pct: 30.0, memory_pct: 50.0, latency_ms: 15.0 },
+            body_sha256: 'digest-001',
+          },
+          {
+            payload_uuid: 'uuid-src-hist-2',
+            tenant_id: 'tenant-alpha',
+            source_id: 'src-test-01',
+            collector_id: 'col-1',
+            event_time_utc: '2026-11-20T14:00:02.000Z',
+            metrics: { cpu_pct: 35.0, memory_pct: 55.0, latency_ms: 22.0 },
+            body_sha256: 'digest-002',
+          },
+        ],
+        next_cursor: null,
+      }),
+    };
+  }
   if (url.includes('/api/v1/fleet')) {
     return {
       ok: false,
@@ -145,6 +175,17 @@ class CicadaApiClientTestable {
     const res = await fetch(`${this.config.baseUrl}/api/v1/payloads/${encodeURIComponent(uuid)}`, { method: 'GET' });
     if (!res.ok) {
       throw new ApiError(res.status, res.statusText, `/api/v1/payloads/${uuid}`);
+    }
+    return res.json();
+  }
+
+  async getSourceMetrics(sourceId, limit = 50, cursor) {
+    const query = cursor ? `?limit=${limit}&cursor=${cursor}` : `?limit=${limit}`;
+    const res = await fetch(`${this.config.baseUrl}/api/v1/sources/${encodeURIComponent(sourceId)}/metrics${query}`, {
+      method: 'GET',
+    });
+    if (!res.ok) {
+      throw new ApiError(res.status, res.statusText, `/api/v1/sources/${sourceId}/metrics`);
     }
     return res.json();
   }
@@ -248,7 +289,16 @@ async function runAllChecks() {
   assert.equal(isDeliveryVerified(75, 50), false, 'Active queue must not assert delivery verified');
   assert.equal(isDeliveryVerified(0, 100), true, 'Drained queue with committed receipts asserts delivery verified');
 
-  console.log('--- All 9 UI Verification Checks PASSED! ---');
+  // Test 10: Phase 4 Source metrics query and event-time ordering
+  console.log('Check 10: getSourceMetrics returns chronologically sorted items...');
+  const sourceMetrics = await client.getSourceMetrics('src-test-01');
+  assert.equal(sourceMetrics.items.length, 2);
+  assert.equal(sourceMetrics.items[0].payload_uuid, 'uuid-src-hist-1');
+  assert.equal(sourceMetrics.items[0].metrics.cpu_pct, 30.0);
+  const isAscending = new Date(sourceMetrics.items[0].event_time_utc).getTime() <= new Date(sourceMetrics.items[1].event_time_utc).getTime();
+  assert.equal(isAscending, true, 'Source metrics items must be sorted ascending by event_time_utc');
+
+  console.log('--- All 10 UI Verification Checks PASSED! ---');
 }
 
 runAllChecks().catch((err) => {

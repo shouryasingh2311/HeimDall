@@ -175,6 +175,21 @@ export class CicadaApiClient {
     return this.request<PayloadDetail>(`/api/v1/payloads/${encodeURIComponent(uuid)}`, { method: 'GET' });
   }
 
+  public async getSourceMetrics(
+    sourceId: string,
+    limit = 50,
+    cursor?: string,
+  ): Promise<{ items: PayloadDetail[]; next_cursor: string | null }> {
+    const params = new URLSearchParams();
+    params.set('limit', String(limit));
+    if (cursor) params.set('cursor', cursor);
+    return this.request<{ items: PayloadDetail[]; next_cursor: string | null }>(
+      `/api/v1/sources/${encodeURIComponent(sourceId)}/metrics?${params.toString()}`,
+      { method: 'GET' },
+      `source-metrics-${sourceId}`,
+    );
+  }
+
   public async getTransitions(cursor?: string): Promise<TransitionsResponse> {
     const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';
     return this.request<TransitionsResponse>(`/api/v1/transitions${query}`, { method: 'GET' }, 'transitions');

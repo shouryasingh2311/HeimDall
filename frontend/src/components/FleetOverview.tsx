@@ -1,10 +1,13 @@
-import React, { useEffect, useRef } from 'react';
-import type { FleetResponse, HealthState } from '../types/contracts';
+import React, { useState, useEffect, useRef } from 'react';
+import type { FleetResponse, FleetSource, HealthState } from '../types/contracts';
 import { apiClient } from '../api/client';
+import { SourceMetricsModal } from './SourceMetricsModal';
 
 interface FleetOverviewProps {
   data: FleetResponse | null;
   isLoading: boolean;
+  isFixtureMode: boolean;
+  onInspectPayload?: (uuid: string) => void;
 }
 
 const getHealthBadgeClass = (health: HealthState): string => {
@@ -22,14 +25,19 @@ const getHealthBadgeClass = (health: HealthState): string => {
   }
 };
 
-export const FleetOverview: React.FC<FleetOverviewProps> = ({ data, isLoading }) => {
+export const FleetOverview: React.FC<FleetOverviewProps> = ({
+  data,
+  isLoading,
+  isFixtureMode,
+  onInspectPayload,
+}) => {
   const hasInstrumentedFirstRender = useRef(false);
+  const [selectedSource, setSelectedSource] = useState<FleetSource | null>(null);
 
   // Capture first visible rendering of source IDs and send to benchmark API
   useEffect(() => {
     if (data && data.sources.length > 0 && !hasInstrumentedFirstRender.current) {
       hasInstrumentedFirstRender.current = true;
-      // Schedule instrumentation after browser paint/commit
       requestAnimationFrame(() => {
         for (const src of data.sources) {
           apiClient.recordFirstRender(src.source_id);
@@ -97,7 +105,7 @@ export const FleetOverview: React.FC<FleetOverviewProps> = ({ data, isLoading })
                   <td>{col.cpu_pct.toFixed(1)}%</td>
                   <td>{col.rss_mb.toFixed(1)} MB</td>
                   <td>
-                    <span className={`status-tag ${col.config_status === 'valid' ? 'tag-valid' : 'tag-invalid'}`}>
+                    <span className={`status-tag ${col.config_status === 'valid' ? 'tag-valid' : 'tag-alert'}`}>
                       {col.config_status.toUpperCase()}
                     </span>
                   </td>
@@ -139,6 +147,7 @@ export const FleetOverview: React.FC<FleetOverviewProps> = ({ data, isLoading })
                 <th>Service Avail.</th>
                 <th>Latest Event</th>
                 <th>Active Reasons</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -170,12 +179,29 @@ export const FleetOverview: React.FC<FleetOverviewProps> = ({ data, isLoading })
                       ))}
                     </div>
                   </td>
+                  <td>
+                    <button
+                      type="button"
+                      className="action-btn text-xs"
+                      onClick={() => setSelectedSource(src)}
+                    >
+                      View Trends
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </section>
+
+      {/* Phase 4 Source Metrics Modal */}
+      <SourceMetricsModal
+        source={selectedSource}
+        onClose={() => setSelectedSource(null)}
+        isFixtureMode={isFixtureMode}
+        onInspectPayload={onInspectPayload}
+      />
     </div>
   );
 };
