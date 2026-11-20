@@ -26,21 +26,21 @@ local collector must collect and process telemetry inside the customer environme
 data local, and send only approved metadata, summaries, health indicators and alerts to a centralized SaaS
 platform.
 Why this problem matters
-   Data exposure risk: shipping raw logs, payloads and credentials to a central platform widens the attack
+• Data exposure risk: shipping raw logs, payloads and credentials to a central platform widens the attack
 surface and can breach compliance obligations.
-  Operational blind spots: teams running many sites, networks and applications need one consolidated
+• Operational blind spots: teams running many sites, networks and applications need one consolidated
 view without losing local control of their data.
-  Alert fatigue: static thresholds create noisy, duplicated alerts; operators need correlated incidents with
+• Alert fatigue: static thresholds create noisy, duplicated alerts; operators need correlated incidents with
 likely causes.
-  Global operations: customers span regions, time zones and data-residency rules, so the platform must
+• Global operations: customers span regions, time zones and data-residency rules, so the platform must
 be designed for that from day one.
 What the SaaS platform must deliver
-   A consolidated view of infrastructure, network, security and collector health across all monitored
+• A consolidated view of infrastructure, network, security and collector health across all monitored
 environments.
-  AIOps techniques that identify anomalies, correlate related events, highlight likely causes and recommend
+• AIOps techniques that identify anomalies, correlate related events, highlight likely causes and recommend
 operational actions.
-  Strict multi-tenant separation so one customer never sees another customer's metadata.
-  A longer-term path from assisted operations toward Autonomous Ops, where approved and safe
+• Strict multi-tenant separation so one customer never sees another customer's metadata.
+• A longer-term path from assisted operations toward Autonomous Ops, where approved and safe
 remediation actions run under appropriate controls.
 2. Architecture and Core Requirements
 TIER 1: CUSTOMER ENVIRONMENT / LOCAL COLLECTOR
@@ -59,33 +59,33 @@ Four-Phase Evaluation Guide
 24-hour Hackathon | Judge's Reference Document
 Page 3
 Local collector and data protection
-   Collect infrastructure, application, network and security telemetry from configured local sources (agents,
+• Collect infrastructure, application, network and security telemetry from configured local sources (agents,
 SNMP, syslog, flow data, APIs).
-  Keep raw logs, payloads, secrets and detailed sensitive records inside the customer environment by
+• Keep raw logs, payloads, secrets and detailed sensitive records inside the customer environment by
 default.
-  Filter, normalize, redact, aggregate and summarize data locally before transmission.
-  Send only allow-listed metadata: metric values, timestamps, pseudonymous source identifiers, health
+• Filter, normalize, redact, aggregate and summarize data locally before transmission.
+• Send only allow-listed metadata: metric values, timestamps, pseudonymous source identifiers, health
 state, event category, severity and concise alert context.
-  Enforce secure collector authentication, encrypted transport, local retention controls and auditable
+• Enforce secure collector authentication, encrypted transport, local retention controls and auditable
 data-transfer records.
-  Provide an egress proof panel: a visible log of exactly what each payload contained before it left the
+• Provide an egress proof panel: a visible log of exactly what each payload contained before it left the
 customer environment.
 Observability and AIOps
-   Monitor CPU, memory, disk, service availability, bandwidth, latency, packet loss and connectivity.
-  Detect repeated authentication failures and suspicious activity using locally processed signals.
-  Detect anomalies, correlate related events, prioritize incidents and provide explainable recommendations.
-  Show collector online/offline status, last-seen time, version, resource usage and configuration status.
-  Support multiple customer environments with tenant-level data separation.
+• Monitor CPU, memory, disk, service availability, bandwidth, latency, packet loss and connectivity.
+• Detect repeated authentication failures and suspicious activity using locally processed signals.
+• Detect anomalies, correlate related events, prioritize incidents and provide explainable recommendations.
+• Show collector online/offline status, last-seen time, version, resource usage and configuration status.
+• Support multiple customer environments with tenant-level data separation.
 Global-ready design
-   Regional ingest: collectors send to the nearest or assigned regional endpoint to reduce latency and
+• Regional ingest: collectors send to the nearest or assigned regional endpoint to reduce latency and
 respect jurisdiction.
-  Tenant data residency: each tenant's metadata is stored in its chosen region and never replicated
+• Tenant data residency: each tenant's metadata is stored in its chosen region and never replicated
 elsewhere without policy approval.
-  UTC timestamps: all events carry UTC time plus a source timezone so dashboards render correctly
+• UTC timestamps: all events carry UTC time plus a source timezone so dashboards render correctly
 worldwide.
-  Out-of-order handling: late or reordered events are placed by event time, not arrival time, without
+• Out-of-order handling: late or reordered events are placed by event time, not arrival time, without
 corrupting trends.
-  Idempotent delivery: every payload has a unique ID so retries after outages never create duplicates.
+• Idempotent delivery: every payload has a unique ID so retries after outages never create duplicates.
 Real-time performance targets
 Measured from timestamps on the organizer-provided simulated telemetry stream. Suggested values
 below; organizers to confirm before the event.
@@ -131,17 +131,17 @@ Understanding
 & Ideation
 Initial
 evaluation
-  Problem understanding: why raw telemetry must stay in the
+• Problem understanding: why raw telemetry must stay in the
 customer environment and why SaaS receives metadata only.
-  Use cases: infrastructure health, network latency and packet loss,
+• Use cases: infrastructure health, network latency and packet loss,
 repeated failed logins, collector fleet health.
-  Proposed features: prioritized list with a clear minimum viable
+• Proposed features: prioritized list with a clear minimum viable
 demo.
-  Local data protection: what stays local, what is redacted, what is
+• Local data protection: what stays local, what is redacted, what is
 sent.
-  Metadata-only SaaS flow: allow-listed fields, tenant separation,
+• Metadata-only SaaS flow: allow-listed fields, tenant separation,
 who can see what.
-  Feasibility within 24 hours: realistic scope, team roles and plan
+• Feasibility within 24 hours: realistic scope, team roles and plan
 for simulated telemetry.
 10
 2. Architecture
@@ -149,21 +149,21 @@ for simulated telemetry.
 Design
 Design
 checkpoint
-  Two-tier architecture: separate collector and SaaS tiers with an
+• Two-tier architecture: separate collector and SaaS tiers with an
 authenticated link.
-  Collector-to-SaaS data flow: collect, filter, redact, aggregate,
+• Collector-to-SaaS data flow: collect, filter, redact, aggregate,
 analyze locally, apply data policy, transmit.
-  Local filtering and redaction: field allow-listing, secret scrubbing,
+• Local filtering and redaction: field allow-listing, secret scrubbing,
 pseudonymous source IDs.
-  Security controls: collector authentication, TLS, local retention,
+• Security controls: collector authentication, TLS, local retention,
 auditable transfer records.
-  Network and infrastructure telemetry plan: CPU, memory, disk,
+• Network and infrastructure telemetry plan: CPU, memory, disk,
 bandwidth, latency, packet loss, connectivity.
-  AIOps approach: baselines, anomaly detection beyond static
+• AIOps approach: baselines, anomaly detection beyond static
 thresholds, correlation, explainable recommendations.
-  Scalability: many collectors and tenants, queueing and storage
+• Scalability: many collectors and tenants, queueing and storage
 choices.
-  Global-ready design: regional ingest, tenant data residency, UTC
+• Global-ready design: regional ingest, tenant data residency, UTC
 timestamps, out-of-order handling, idempotent delivery.
 25
 
@@ -183,22 +183,22 @@ Prototype
 Progress /
 technical
 checkpoint
-  Working collector: gathers and processes data locally.
-  Telemetry: real, or clearly simulated using the organizer-provided
+• Working collector: gathers and processes data locally.
+• Telemetry: real, or clearly simulated using the organizer-provided
 stream.
-  Proof that raw data stays local: raw logs and secrets visible on
+• Proof that raw data stays local: raw logs and secrets visible on
 the collector side only.
-  Metadata reaching SaaS: only allow-listed fields, separated per
+• Metadata reaching SaaS: only allow-listed fields, separated per
 tenant.
-  Dashboard and four health states: Excellent, Good, Fair, Poor
+• Dashboard and four health states: Excellent, Good, Fair, Poor
 with clear thresholds and stale-data handling.
-  Anomaly detection and alerts: flagged with context, not just
+• Anomaly detection and alerts: flagged with context, not just
 threshold breaches.
-  Failure handling: outage detection, local buffering, retry and
+• Failure handling: outage detection, local buffering, retry and
 resume.
-  Real-time performance and delivery reliability (10 of the 35
+• Real-time performance and delivery reliability (10 of the 35
 marks): latency targets met, no lost or duplicate records.
-  Egress proof panel: exact payload contents shown before leaving
+• Egress proof panel: exact payload contents shown before leaving
 the customer environment.
 35
 4. Final Demo,
@@ -206,17 +206,18 @@ Validation &
 Presentation
 Final
 evaluation
-  End-to-end demonstration: raw source to actionable
+• End-to-end demonstration: raw source to actionable
 recommendation.
-  Live scenario response: the platform reacts correctly to injected events without rehearsal shortcuts.
-  Correctness and reliability: right detections, few false alarms,
+• Live scenario response: correct reaction to events injected on the
+spot.
+• Correctness and reliability: right detections, few false alarms,
 stable behavior.
-  Explainable AIOps recommendations (weighted higher): why it
+• Explainable AIOps recommendations (weighted higher): why it
 was flagged, which signals contributed, why this action.
-  Limitations: honest gaps and what would be needed for
+• Limitations: honest gaps and what would be needed for
 production.
-  Innovation: novel ideas in privacy, correlation or noise reduction.
-  Presentation: clear story and confident answers to judge
+• Innovation: novel ideas in privacy, correlation or noise reduction.
+• Presentation: clear story and confident answers to judge
 questions.
 30
 Total
@@ -231,7 +232,7 @@ the bonus challenges.
 Phase 1: Problem Understanding & Ideation (10 marks)
 Focus: Initial evaluation, early in the hackathon, before heavy building starts.
 What the judge looks for
-   Clear grasp of why raw telemetry must stay in the customer environment and why SaaS receives
+• Clear grasp of why raw telemetry must stay in the customer environment and why SaaS receives
 metadata only.
 
 === PAGE 6 ===
@@ -239,44 +240,44 @@ End-to-end, secure AIOps observability
 Four-Phase Evaluation Guide
 24-hour Hackathon | Judge's Reference Document
 Page 6
-  Concrete use cases: infrastructure health, network latency and packet loss, security signals such as failed
+• Concrete use cases: infrastructure health, network latency and packet loss, security signals such as failed
 logins, collector fleet health.
-  A proposed feature list that is prioritized and realistic for 24 hours, with a stated minimum viable demo.
-  Clarity on what is local, what is sent, and who can see it, including tenant separation.
-  Early awareness of global concerns such as regions, time zones and residency.
+• A proposed feature list that is prioritized and realistic for 24 hours, with a stated minimum viable demo.
+• Clarity on what is local, what is sent, and who can see it, including tenant separation.
+• Early awareness of global concerns such as regions, time zones and residency.
 Evidence to ask for
-   A one-page data-flow sketch marking the trust boundary between Tier 1 and Tier 2.
-  A list of fields the team plans to allow-list, and examples of what will be redacted or dropped.
-  The team's plan for simulated telemetry and who builds which component.
+• A one-page data-flow sketch marking the trust boundary between Tier 1 and Tier 2.
+• A list of fields the team plans to allow-list, and examples of what will be redacted or dropped.
+• The team's plan for simulated telemetry and who builds which component.
 Strong versus weak
-   Strong: The team states precisely what leaves the environment, picks a small set of high-value use
+• Strong: The team states precisely what leaves the environment, picks a small set of high-value use
 cases, and has a believable 24-hour plan.
-  Weak: The idea is a generic dashboard, the metadata-only boundary is vague, or the scope is far too
+• Weak: The idea is a generic dashboard, the metadata-only boundary is vague, or the scope is far too
 large to finish.
 Phase 2: Architecture & Technical Design (25 marks)
 Focus: Design checkpoint, once the team has committed to an approach.
 What the judge looks for
-   Two-tier architecture: separate collector and SaaS components with a clear, authenticated link between
+• Two-tier architecture: separate collector and SaaS components with a clear, authenticated link between
 them.
-  Data flow: collect, filter or redact, aggregate, analyze locally, apply data policy, then transmit.
-  Security controls: collector authentication, TLS, field allow-listing, secret scrubbing, local retention and
+• Data flow: collect, filter or redact, aggregate, analyze locally, apply data policy, then transmit.
+• Security controls: collector authentication, TLS, field allow-listing, secret scrubbing, local retention and
 audit records.
-  Telemetry plan: how CPU, memory, disk, bandwidth, latency, packet loss and connectivity will be
+• Telemetry plan: how CPU, memory, disk, bandwidth, latency, packet loss and connectivity will be
 gathered.
-  AIOps approach: baselines, anomaly detection beyond static thresholds, correlation logic and how
+• AIOps approach: baselines, anomaly detection beyond static thresholds, correlation logic and how
 recommendations are explained.
-  Scalability: many collectors and tenants, queueing and storage choices.
-  Global-ready design: regional ingest, tenant data residency, UTC timestamps, out-of-order handling and
+• Scalability: many collectors, many tenants, queueing and storage choices.
+• Global-ready design: regional ingest, tenant data residency, UTC timestamps, out-of-order handling and
 idempotent delivery.
 Evidence to ask for
-   An architecture diagram with the trust boundary and every network hop labeled.
-  The payload schema and the allow-list mechanism.
-  How the design behaves when SaaS is unreachable, and how duplicates are avoided after reconnect.
-  Tenant isolation approach (separate schemas, tenant IDs enforced at every query, or separate stores).
+• An architecture diagram with the trust boundary and every network hop labeled.
+• The payload schema and the allow-list mechanism.
+• How the design behaves when SaaS is unreachable, and how duplicates are avoided after reconnect.
+• Tenant isolation approach (separate schemas, tenant IDs enforced at every query, or separate stores).
 Strong versus weak
-   Strong: Security and data protection are built into the design, failure handling is planned, and the team
+• Strong: Security and data protection are built into the design, failure handling is planned, and the team
 can explain each trade-off.
-  Weak: Architecture is a block diagram with no data-protection logic, or global-ready concerns and
+• Weak: Architecture is a block diagram with no data-protection logic, or global-ready concerns and
 reliability are never mentioned.
 Phase 3: Implementation & Working Prototype (35 marks)
 Focus: Progress and technical checkpoint, with a running system to inspect.
@@ -287,44 +288,44 @@ Four-Phase Evaluation Guide
 24-hour Hackathon | Judge's Reference Document
 Page 7
 What the judge looks for
-   Working collector producing real or clearly simulated telemetry from the organizer stream.
-  Proof that raw data stays local: raw logs and secrets are visible on the collector side only.
-  Metadata reaching SaaS: the SaaS side shows only allow-listed fields, per tenant.
-  Dashboard and four health states: Excellent, Good, Fair and Poor with clear thresholds and handling of
+• Working collector producing real or clearly simulated telemetry from the organizer stream.
+• Proof that raw data stays local: raw logs and secrets are visible on the collector side only.
+• Metadata reaching SaaS: the SaaS side shows only allow-listed fields, per tenant.
+• Dashboard and four health states: Excellent, Good, Fair and Poor with clear thresholds and handling of
 stale or missing data.
-  Anomaly detection, alerts and failure handling: outage detection, local buffering and retry.
-  Real-time performance and delivery reliability (10 of the 35 marks): latency targets met, no lost
+• Anomaly detection, alerts and failure handling: outage detection, local buffering and retry.
+• Real-time performance and delivery reliability (10 of the 35 marks): latency targets met, no lost
 records and no duplicates after an outage.
-  Egress proof panel: exact payload contents shown before they leave the customer environment.
+• Egress proof panel: exact payload contents shown before they leave the customer environment.
 Evidence to ask for
-   A live side-by-side view: raw log with a secret on the collector, and the redacted metadata on the SaaS
+• A live side-by-side view: raw log with a secret on the collector, and the redacted metadata on the SaaS
 dashboard.
-  Timestamps proving the real-time targets in Section 2, measured from the shared telemetry stream.
-  A forced SaaS outage followed by reconnection, with sent and received IDs compared.
-  The egress proof panel log for a specific payload.
+• Timestamps proving the real-time targets in Section 2, measured from the shared telemetry stream.
+• A forced SaaS outage followed by reconnection, with sent and received IDs compared.
+• The egress proof panel log for a specific payload.
 Strong versus weak
-   Strong: Everything is demonstrated live from the shared stream, the egress log matches what the SaaS
+• Strong: Everything is demonstrated live from the shared stream, the egress log matches what the SaaS
 received, and reliability numbers are measured, not claimed.
-  Weak: Polished screens backed by hard-coded data, no proof of what leaves the collector, or no behavior
+• Weak: Polished screens backed by hard-coded data, no proof of what leaves the collector, or no behavior
 under failure.
 Phase 4: Final Demo, Validation & Presentation (30 marks)
 Focus: Final evaluation with live scenarios (see Section 8).
 What the judge looks for
-   End-to-end demonstration from raw source to actionable recommendation.
-  Live scenario response: the platform reacts correctly to injected events without rehearsal shortcuts.
-  Correctness and reliability: right detections, few false alarms, stable behavior.
-  Explainable AIOps recommendations (weighted higher): why it
-was flagged, which signals contributed, why this action.
-  Limitations and innovation: honest gaps, plus anything novel in privacy, correlation or noise reduction.
-  Presentation: clear story, confident answers to judge questions.
+• End-to-end demonstration from raw source to actionable recommendation.
+• Live scenario response: the platform reacts correctly to injected events without rehearsal shortcuts.
+• Correctness and reliability: right detections, few false alarms, stable behavior.
+• Explainable AIOps recommendations (weighted higher): why the anomaly was flagged, which signals
+contributed, and why this action is suggested.
+• Limitations and innovation: honest gaps, plus anything novel in privacy, correlation or noise reduction.
+• Presentation: clear story, confident answers to judge questions.
 Evidence to ask for
-   A recommendation shown with its contributing signals, confidence and the reasoning path.
-  Several related alerts merged into one incident, with the affected components identified.
-  Answers to the Section 7 questions without referring to slides.
+• A recommendation shown with its contributing signals, confidence and the reasoning path.
+• Several related alerts merged into one incident, with the affected components identified.
+• Answers to the Section 7 questions without referring to slides.
 Strong versus weak
-   Strong: Recommendations are transparent and traceable to metadata signals, and limitations are stated
+• Strong: Recommendations are transparent and traceable to metadata signals, and limitations are stated
 plainly.
-  Weak: Recommendations appear as unexplained text, or the team cannot say what data led to them.
+• Weak: Recommendations appear as unexplained text, or the team cannot say what data led to them.
 
 === PAGE 8 ===
 End-to-end, secure AIOps observability
@@ -351,9 +352,9 @@ Critical
 Collector unavailable, severe service degradation, or a critical
 security/network event.
 What to check
-   Thresholds are configurable and the reason for each state change is shown to the operator.
-  Stale or missing data downgrades the state instead of silently showing the last good value.
-  State transitions are timestamped in UTC and appear in an event history.
+• Thresholds are configurable and the reason for each state change is shown to the operator.
+• Stale or missing data downgrades the state instead of silently showing the last good value.
+• State transitions are timestamped in UTC and appear in an event history.
 5. AIOps to Autonomous Ops Roadmap
 Stage
 Capability
@@ -408,21 +409,21 @@ Show UTC handling, out-of-order events placed correctly, and idempotent retries
 with no duplicates.
 7. Questions for Judges to Ask
 Security and data handling
-   Exactly what data leaves the local environment, and what stays behind?
-  How does the collector decide which fields are allowed to be sent to SaaS?
-  How do you prevent secrets or raw log content from being transmitted accidentally?
-  How are collectors authenticated and data encrypted?
-  Can you open the egress proof panel and show the last payload?
+• Exactly what data leaves the local environment, and what stays behind?
+• How does the collector decide which fields are allowed to be sent to SaaS?
+• How do you prevent secrets or raw log content from being transmitted accidentally?
+• How are collectors authenticated and data encrypted?
+• Can you open the egress proof panel and show the last payload?
 AIOps and operations
-   How do you distinguish a real anomaly from a normal usage spike?
-  How do you correlate multiple alerts into one incident?
-  Can you explain why the platform recommends a particular action?
-  What safeguards are needed before automated remediation?
+• How do you distinguish a real anomaly from a normal usage spike?
+• How do you correlate multiple alerts into one incident?
+• Can you explain why the platform recommends a particular action?
+• What safeguards are needed before automated remediation?
 Architecture and reliability
-   What happens when SaaS is unreachable?
-  How do you avoid losing or duplicating metadata after reconnection?
-  How would you scale across many collectors and customer tenants?
-  How do you handle regions, tenant data residency, UTC time and out-of-order events?
+• What happens when SaaS is unreachable?
+• How do you avoid losing or duplicating metadata after reconnection?
+• How would you scale across many collectors and customer tenants?
+• How do you handle regions, tenant data residency, UTC time and out-of-order events?
 8. Live Scenarios for Final Validation
 Scenario
 Expected demonstration
@@ -459,13 +460,13 @@ stay correct.
 Remediation is proposed
 Show policy check, approval, audit trail, and rollback or simulation safeguards.
 9. Judge's Guidance
-   Do not score a team highly only because its dashboard looks polished. Verify that the collector gathers
+• Do not score a team highly only because its dashboard looks polished. Verify that the collector gathers
 data, processes it locally and sends only approved metadata to SaaS. Ask the team to prove what
 remains local and what appears centrally.
-  Give credit for AIOps that goes beyond static threshold alerts: look for anomaly context, correlation,
+• Give credit for AIOps that goes beyond static threshold alerts: look for anomaly context, correlation,
 prioritization and explainable recommendations.
-  Measure the real-time targets from timestamps on the shared telemetry stream, not from team claims.
-  Treat Autonomous Ops as a future direction. Safe simulation and human approval are appropriate within a
+• Measure the real-time targets from timestamps on the shared telemetry stream, not from team claims.
+• Treat Autonomous Ops as a future direction. Safe simulation and human approval are appropriate within a
 24-hour hackathon.
 Key question: "Can you show exactly what your local collector sends to SaaS, prove that sensitive and raw
 data stays within the customer environment, and demonstrate how AIOps turns metadata into an actionable

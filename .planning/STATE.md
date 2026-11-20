@@ -1,42 +1,29 @@
-# Project State: Cicada AIOps Observability Platform
+# Project state
 
-## Project Reference
+## Current status
 
-See: .planning/PROJECT.md (updated 2026-11-20)
+Planning revision complete; application implementation has NOT started.
+Eight capability phases planned, 0/8 implemented, 0/14 acceptance checks executed.
+Repository initially contained documentation only. This revision changes documentation and planning metadata, not application code.
 
-**Core value:** Zero raw telemetry or credentials leave the customer environment, verified by a local Egress Proof Panel, while the SaaS platform delivers real-time, explainable AIOps correlation and actionable operational recommendations.
-**Current focus:** Phase 1: Two-Tier Core Architecture & Secure Transport
+## Working constraints
 
-## Progress
+Eight hours; three people. M1 owns heavy core work, M2 UI, M3 inputs/validation/local presentation. Use TEAM_EXECUTION.md, GIT_WORKFLOW.md and individual MEMBER guides. Contracts are specified but need G0 freeze and generated fixtures.
 
-**Milestone:** v1.0 (Hackathon MVP & Judge Validation Suite)
-**Status:** All 8 Phases Fully Researched & Planned (Ready to Execute)
-**Phase Progress:** 0% (0/8 executed, 8/8 planned)
+| Gate | Target | Actual evidence |
+|---|---|---|
+| G0 | 0:30 | Pending team kickoff/organizer sample |
+| G1 | 2:00 | Not started |
+| G2 | 3:30 | Not started |
+| G3 | 5:00 | Not started |
+| G4 | 5:45 | Not started |
+| G5 | 7:00 | Not started |
+| G6 | 8:00 | Not started |
 
-| Phase | Plans | Research | Status | Goal |
-| :--- | :--- | :--- | :--- | :--- |
-| 1. Two-Tier Core Architecture & Secure Transport | 1/1 | ✓ Completed | Ready to execute | Tier 1 Local Collector & Tier 2 SaaS platform with token/TLS auth |
-| 2. Local Privacy Pipeline & Egress Proof Panel | 1/1 | ✓ Completed | Ready to execute | Client-side secret scrubbing, field allow-listing, and Egress Proof UI |
-| 3. Resilient Offline Buffering & Idempotent Ingestion | 1/1 | ✓ Completed | Ready to execute | SQLite WAL outage buffer with zero-loss replay and idempotent deduplication |
-| 4. Telemetry Metrics Engine, Health States & Benchmarking | 1/1 | ✓ Completed | Ready to execute | 4-state health classification, stale data handling, and real-time latency targets |
-| 5. Explainable AIOps Anomaly Detection & Incident Correlation | 1/1 | ✓ Completed | Ready to execute | Dynamic baselining, local attack scoring, alert correlation, and explainable recommendations |
-| 6. Autonomous Ops Simulator & Policy-Guarded Remediation | 1/1 | ✓ Completed | Ready to execute | Human-in-the-loop remediation simulator with audit log and rollback |
-| 7. Interactive Chaos Engine & 8 Live Validation Scenarios | 1/1 | ✓ Completed | Ready to execute | 1-click test harness for all 8 hackathon evaluation scenarios |
-| 8. Unified Operations Dashboard & Judge Verification Suite | 1/1 | ✓ Completed | Ready to execute | Dual-view comparison dashboard with fleet health & scenario runner |
+## Dependencies and risks
 
-## Key Decisions
+Organizer sample/schema/transport and final target values unconfirmed. Actual TLS/browser trust and dependency installation untested. M1 is the critical path; scope reductions in TEAM_EXECUTION.md apply. Regional hosting remains design-only. Teammate GitHub write access not checked.
 
-| Decision | Rationale | Outcome |
-| :--- | :--- | :--- |
-| Two-Tier Architecture | Physical separation of raw edge telemetry from central metadata ingestion | Pending execution |
-| Local-First Scrubbing & Egress Panel | Compliance guarantee before network egress; live inspection for judges | Pending execution |
-| SQLite WAL Offline Buffer | Crash-resilient zero-loss local storage during SaaS outages | Pending execution |
-| Statistical AIOps (EWMA + Z-score) | Fast, transparent, explainable anomaly detection without heavy GPU dependencies | Pending execution |
-| Python FastAPI + Next.js/React | High-performance async analytics backend + responsive modern frontend | Pending execution |
+## Updating state during build
 
-## Blockers
-
-None. All 8 phase plans, research documents, and requirements are locked and committed. Ready to execute Phase 1.
-
----
-*Last updated: 2026-11-20 after all 8 phases planned*
+M1 records accepted gate, integrated commit SHA, V-check evidence, remaining failures and limitations after each integration. Other members update their own status files. Never mark unknown/blocked checks passed.

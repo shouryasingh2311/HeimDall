@@ -1,0 +1,24 @@
+{
+  "format": "team-plan-v1",
+  "scope": "planning-only-until-build-requested",
+  "time_budget_hours": 8,
+  "member_count": 3,
+  "auto_execute": false,
+  "workflow": "TEAM_EXECUTION.md",
+  "git": {
+    "integration_branch": "main",
+    "planning_branch": "planning/eight-hour-team-execution",
+    "member_branches": {
+      "M1": "feat/core-platform",
+      "M2": "feat/operations-dashboard",
+      "M3": "feat/fixtures-validation"
+    },
+    "force_push": false,
+    "review_before_merge": true
+  },
+  "contracts_owner": "M1",
+  "acceptance_catalog": "VALIDATION.md",
+  "phase_count": 8,
+  "requirement_count": 43,
+  "notes": "Planning metadata for the repository-contained workflow; not a GSD executable configuration."
+}
