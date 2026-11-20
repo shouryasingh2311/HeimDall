@@ -10,9 +10,9 @@ Development proceeds across three bounded member workstreams to prevent merge co
 
 | Role | Branch | Owned Directory Paths | Primary Responsibility |
 |---|---|---|---|
-| **M1: Lead / Core** | `feat/core-platform` | `backend/shared/**`, `backend/saas/**`, `backend/collector/**` (excl. adapters/demo), `pyproject.toml`, `scripts/security/**`, `tests/core/**`, `.planning/CONTRACTS.md`, `.planning/STATE.md` | Core architecture, security sanitizer, SQLite outbox, SaaS APIs, AIOps engine, and integration. |
-| **M2: Operations Dashboard** | `feat/operations-dashboard` | `frontend/**`, `tests/ui/**`, `.planning/status/MEMBER_2.md` | React 18 / Vite UI, fleet views, egress receipt inspector, render timing instrumentation. |
-| **M3: Validation & Adapters** | `feat/fixtures-validation` | `backend/collector/adapters/**`, `backend/collector/demo_source.py`, `backend/collector/static/**`, `tests/scenarios/**`, `scripts/verification/**`, `docs/RUNBOOK.md`, `.planning/status/MEMBER_3.md` | Organizer stream adapter, local proof HTML, pure simulation source, 8-scenario verifiers. |
+| **M1: Lead / Core** | `feat/core-platform` | `backend/shared/**`, `backend/saas/**`, `backend/collector/**` (excl. adapters/demo), `pyproject.toml`, `scripts/security/**`, `tests/core/**`, `docs/CONTRACTS.md` | Core architecture, security sanitizer, SQLite outbox, SaaS APIs, AIOps engine, and integration. |
+| **M2: Operations Dashboard** | `feat/operations-dashboard` | `frontend/**`, `tests/ui/**` | React 19 / Vite UI, fleet views, egress receipt inspector, render timing instrumentation. |
+| **M3: Validation & Adapters** | `feat/fixtures-validation` | `backend/collector/adapters/**`, `backend/collector/demo_source.py`, `backend/collector/static/**`, `tests/scenarios/**`, `scripts/verification/**`, `docs/RUNBOOK.md` | Organizer stream adapter, local proof HTML, pure simulation source, 8-scenario verifiers. |
 
 ### Branch Rules
 * Work only on your designated feature branch.
@@ -54,20 +54,4 @@ cd ..
 - [ ] No secrets, keys, or credentials committed.
 - [ ] No temporary SQLite databases committed (`*.db`, `*.sqlite`, `*.wal`).
 - [ ] Code formatted with Black/Ruff (`python -m ruff check .`).
-- [ ] Frontend clean build without TypeScript errors.
-- [ ] Member status file updated in `.planning/status/`.
-
----
-
-## 4. Status Tracking
-
-Every 30–45 minutes of active development:
-* Update your personal status file:
-  * Member 1: `.planning/status/MEMBER_1.md`
-  * Member 2: `.planning/status/MEMBER_2.md`
-  * Member 3: `.planning/status/MEMBER_3.md`
-* Record:
-  * Latest commit SHA.
-  * Completed requirements / task IDs.
-  * Checks executed with observed evidence.
-  * Blockers or required interface updates.
+- [ ] Frontend clean build without TypeScript errors (`npm --prefix frontend run build`).

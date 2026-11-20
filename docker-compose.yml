@@ -1,0 +1,21 @@
+services:
+  heimdall:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: heimdall:latest
+    container_name: heimdall
+    ports:
+      - "8443:8443"
+      - "9001:9001"
+    volumes:
+      - heimdall-runtime:/app/.heimdal
+    restart: unless-stopped
+    environment:
+      - RUNTIME_DIR=/app/.heimdal/runtime
+      - SAAS_PORT=8443
+      - LOCAL_PORT=9001
+
+volumes:
+  heimdall-runtime:
+    driver: local

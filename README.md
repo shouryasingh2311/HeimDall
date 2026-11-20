@@ -14,7 +14,7 @@ Built for the CICADA 2026 hackathon.
 
 Heimdal is an AIOps observability platform designed to monitor distributed services without sending raw logs, credentials, or sensitive customer records across network boundaries.
 
-> Quick links: [Run the live demo](docs/RUNBOOK.md) · [Member 1 Lead](.planning/MEMBER_1_LEAD.md) · [Member 2 Dashboard](.planning/MEMBER_2_DASHBOARD.md) · [Member 3 Validation](.planning/MEMBER_3_VALIDATION.md) · [Contracts](.planning/CONTRACTS.md) · [Architecture](.planning/ARCHITECTURE.md)
+> Quick links: [Run the live demo](docs/RUNBOOK.md) · [Architecture](docs/ARCHITECTURE.md) · [API Reference](docs/API.md) · [Data Contracts](docs/CONTRACTS.md)
 
 The system separates collection and central analysis into two tiers:
 1. Customer-local collector: Runs inside the customer environment. It filters, redacts, and aggregates telemetry locally. Raw logs, secrets, and customer data never leave this boundary. An SQLite outbox buffers records during outages, and a local loopback server displays the outbound payload and cryptographic digest.
@@ -186,18 +186,13 @@ The test harness exercises all 8 evaluation scenarios:
 ## Repository Structure
 
 ```
-monitor/
-├── .planning/                  # Authoritative planning and specifications
+HeimDall/
+├── docs/                       # Project documentation and specifications
 │   ├── ARCHITECTURE.md         # Trust boundary and network specification
 │   ├── CONTRACTS.md            # Complete API schemas and data contracts
-│   ├── REQUIREMENTS.md         # 43 canonical project requirements
-│   ├── ROADMAP.md              # 8-phase milestone breakdown and acceptance gates
-│   ├── STATE.md                # Project status, gate progress, and evidence log
-│   ├── TEAM_EXECUTION.md       # Ownership matrix across M1, M2, and M3
-│   ├── VALIDATION.md           # 14 acceptance checks (V00 to V13) and test catalog
-│   └── phases/                 # Individual capability phase plans (01 to 08)
-├── docs/                       # Project documentation
-│   ├── ARCHITECTURE.md         # Architecture and trust boundary guide
+│   ├── API.md                  # REST endpoint definitions
+│   ├── RUNBOOK.md              # Live demonstration and judge evaluation guide
+│   └── CONTRIBUTING.md         # Development guide and testing rules
 │   ├── API.md                  # REST API reference (SaaS and Local Collector)
 │   ├── RUNBOOK.md              # Live demonstration and judge evaluation guide
 │   └── CONTRIBUTING.md         # Development guide, code standards, and PR workflow
@@ -230,21 +225,83 @@ monitor/
 
 ---
 
-## Getting Started & Local Setup
+## Getting Started & Deployment
 
-On Windows, double-click **Start-Heimdal.cmd** to build and start the live demo in one window. See the [judge runbook](docs/RUNBOOK.md#1-start-the-live-demo-on-windows) for the two sign-ins and scenario steps.
+For an interactive Windows demo with copy-on-demand tokens and collector restart controls, use **Start-Heimdal.cmd**. See the [judge runbook](docs/RUNBOOK.md#1-start-the-live-demo-on-windows).
 
-### Prerequisites
+Choose the installation method that fits your preferences:
+
+### Method 1: Zero-Clone One-Liner (Easiest — No Git required)
+Run one command in your terminal. It downloads HeimDall, checks for Docker/Python, bootstraps TLS certificates and tokens, and **automatically launches your browser** directly into the platform.
+
+**On Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/shouryasingh2311/HeimDall/main/install.ps1 | iex
+```
+
+**On Linux / macOS (Bash):**
+```bash
+curl -fsSL https://raw.githubusercontent.com/shouryasingh2311/HeimDall/main/install.sh | bash
+```
+
+---
+
+### Method 2: 1-Click Desktop Launcher (`run.bat`)
+If you downloaded or cloned the repository on Windows:
+1. Double-click **`run.bat`** in the repository root.
+2. The launcher sets up the environment, starts all services, and opens the dashboard in your default browser automatically.
+
+---
+
+### Method 3: One-Command Docker Deployment (Recommended for Containers)
+No Python, Node.js, or virtual environments required on the host system.
+
+```bash
+git clone https://github.com/shouryasingh2311/HeimDall.git
+cd HeimDall
+docker compose up
+```
+
+Once running:
+* **Operations Dashboard**: `https://localhost:8443` (served over HTTPS with React UI)
+* **Scenario Verification**: `http://localhost:9001/scenarios` (isolated chaos engine)
+* **Local Egress Proof**: `http://localhost:9001/audit` (zero-raw-log loopback proof)
+* **Operator Token**: Printed directly in the startup banner for easy copy-paste.
+
+---
+
+### Method 4: One-Command Native Quick Start (No Docker)
+If Docker is not installed, automated startup scripts handle virtual environment creation, dependencies, frontend compilation, and TLS bootstrap automatically:
+
+**On Windows (PowerShell):**
+```powershell
+git clone https://github.com/shouryasingh2311/HeimDall.git
+cd HeimDall
+.\start.ps1
+```
+
+**On Linux / macOS (Bash):**
+```bash
+git clone https://github.com/shouryasingh2311/HeimDall.git
+cd HeimDall
+chmod +x start.sh
+./start.sh
+```
+
+---
+
+### Method 5: Manual Development Setup
+
+#### Prerequisites
 * Python: 3.11 or newer.
 * Node.js: v22.12.0 or newer with `npm`.
 * Operating System: Windows, macOS, or Linux.
 
-### 1. Environment Setup
-
+#### 1. Environment Setup
 ```bash
 # Clone the repository
-git clone https://github.com/shouryasingh2311/HeimDall.git monitor
-cd monitor
+git clone https://github.com/shouryasingh2311/HeimDall.git
+cd HeimDall
 
 # Backend setup (Python virtual environment)
 python -m venv .venv
@@ -253,15 +310,15 @@ python -m venv .venv
 # Linux/macOS:
 source .venv/bin/activate
 
-# Install locked dependencies
-pip install -r requirements.lock
+# Install dependencies
+pip install -e .
 
 # Frontend setup
 npm --prefix frontend ci
 npm --prefix frontend run build
 ```
 
-### 2. Bootstrap Local Certificates & Credentials
+#### 2. Bootstrap Local Certificates & Credentials
 Heimdal enforces TLS and cryptographic tokens. Run the security bootstrap tool to generate the local development CA, localhost SAN certificates, and tenant credentials in `.heimdal/dev/`:
 ```bash
 python -m scripts.security.bootstrap
@@ -276,12 +333,12 @@ To export OpenAPI schemas and synthetic fixtures for frontend development:
 python -m scripts.security.export_contracts
 ```
 
-### 3. Running Central SaaS Service
+#### 3. Running Central SaaS Service
 Start the central SaaS platform over HTTPS:
 ```bash
 python -m backend.saas.main --dashboard frontend/dist
 ```
-* SaaS API runs at: `https://localhost:8443`
+* SaaS API & Dashboard: `https://localhost:8443`
 * Public health check: `https://localhost:8443/healthz`
 * Query fleet status with generated operator credentials:
   ```powershell
@@ -289,20 +346,20 @@ python -m backend.saas.main --dashboard frontend/dist
   curl.exe --cacert .heimdal/dev/ca.pem -H "Authorization: Bearer $($operator.token)" -H "X-Tenant-ID: $($operator.tenant_id)" https://localhost:8443/api/v1/fleet
   ```
 
-### 4. Running the Local Collector
+#### 4. Running the Local Collector
 In a separate terminal, start the local collector daemon:
 ```bash
-python -m backend.collector.daemon
+python -m backend.collector.daemon --scenarios
 ```
 * To run for Tenant Beta: `python -m backend.collector.daemon --tenant beta`
 * To run a single batch and exit: `python -m backend.collector.daemon --once`
 * To ingest local JSONL logs: `python -m backend.collector.daemon --input path/to/events.jsonl`
 * Local Egress Proof Panel: Open `http://localhost:9001/audit` in your browser. Enter the `local_token` from `.heimdal/dev/collector-alpha.json` to inspect the raw input preview, sanitized outbound bytes, and matching SaaS receipt.
 
-### 5. Opening the Operations Dashboard
+#### 5. Opening the Operations Dashboard
 Open <https://localhost:8443> and enter the tenant ID and operator token from `.heimdal/dev/operator-alpha.json`. The [judge runbook](docs/RUNBOOK.md) covers browser CA trust, the scenario runner, and the full demo.
 
-### 6. Running Validation Suite
+#### 6. Running Validation Suite
 ```bash
 # Run core security, schema, and deduplication tests
 python -m pytest tests/core
@@ -323,30 +380,19 @@ For the full regression with Edge and all eight scenarios, follow the [verificat
 * [Architecture & Trust Boundaries](docs/ARCHITECTURE.md): Network flow, encryption protocols, and transactional outbox mechanics.
 * [Phase 1 Runbook](docs/PHASE1.md): Procedures for running and validating the Phase 1 core architecture and transport.
 * [REST API Reference](docs/API.md): Endpoint catalog for both SaaS and Local Collector services.
+* [Interface Authority (CONTRACTS.md)](docs/CONTRACTS.md): Nested schemas, field limits, and wire-receipt hashing specs.
 * [Judge Evaluation Runbook](docs/RUNBOOK.md): Step-by-step walkthrough for verifying each of the 8 hackathon scenarios.
 * [Developer & Contributing Guide](docs/CONTRIBUTING.md): Team git workflow, code ownership boundaries, and testing rules.
-* [Interface Authority (CONTRACTS.md)](.planning/CONTRACTS.md): Nested schemas, field limits, and wire-receipt hashing specs.
-* [Acceptance Catalog (VALIDATION.md)](.planning/VALIDATION.md): Specifications for checks `V00` through `V13`.
-
----
-
-## Team Roles
-
-The project is structured for a 3-member parallel development workflow:
-
-| Role | Member | Focus Areas & Owned Files |
-|---|---|---|
-| M1: Lead / Core | Project Lead | Architecture, shared Pydantic models (`backend/shared/**`), security sanitizer, outbox persistence, SaaS API (`backend/saas/**`), AIOps detector, and integration. |
-| M2: Operations Dashboard | Frontend Teammate | React 19 / Vite client (`frontend/**`), fleet health widgets, egress receipt inspector, incident views, and render-to-frame latency timing. |
-| M3: Validation & Adapters | Validation Teammate | Telemetry adapters (`backend/collector/adapters/**`), demo source, local HTML proof UI, 8 scenario harnesses (`tests/scenarios/**`), and runbook. |
 
 ---
 
 ## Status and Limitations
 
 ### Current Status
-* All eight phases are integrated on `main`. The [Phase 8 evidence record](.planning/phases/08-unified-operations-dashboard-judge-verification-suite/08-01-SUMMARY.md) describes the synthetic demo rehearsal.
-* Runtime includes HTTPS SaaS, loopback Collector daemon, local HTML proof inspector, and React 19 / Vite dashboard.
+* All 8 Phases are fully integrated on `main`.
+* Gates G0 through G6 achieved.
+* Runtime includes HTTPS SaaS, loopback Collector daemon, local HTML proof inspector, scenario verification engine, and React 19 / Vite dashboard.
+* Checks V01 through V12 verified with synthetic and live test evidence.
 * V00 remains blocked until the official organizer telemetry stream is verified.
 
 ### Scoped Boundaries
