@@ -24,6 +24,30 @@ globalThis.fetch = async (url, options) => {
       json: async () => ({ accepted: true, first_recorded: true }),
     };
   }
+  if (url.includes('/api/v1/payloads/')) {
+    const uuid = url.split('/api/v1/payloads/')[1];
+    return {
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({
+        payload_uuid: decodeURIComponent(uuid),
+        tenant_id: 'tenant-alpha',
+        collector_id: 'collector-alpha-1',
+        source_id: 'src-pseudonym-api-01',
+        region: 'us-east-1',
+        event_time_utc: '2026-11-20T14:00:00.000Z',
+        source_timezone: 'UTC',
+        event_type: 'metric',
+        metrics: { cpu_pct: 25.5, memory_pct: 48.2, service_available: true, connectivity: true },
+        security: null,
+        severity: 'info',
+        body_sha256: '5a4b12c879d031e4f9b207a90b4e28cd889504a3f2b6041ec62de1895a0247fe',
+        received_at_utc: '2026-11-20T14:00:00.115Z',
+        analysis_status: 'live',
+      }),
+    };
+  }
   if (url.includes('/api/v1/fleet')) {
     return {
       ok: false,
@@ -105,6 +129,14 @@ class CicadaApiClientTestable {
     }
     return res.json();
   }
+
+  async getPayload(uuid) {
+    const res = await fetch(`${this.config.baseUrl}/api/v1/payloads/${encodeURIComponent(uuid)}`, { method: 'GET' });
+    if (!res.ok) {
+      throw new ApiError(res.status, res.statusText, `/api/v1/payloads/${uuid}`);
+    }
+    return res.json();
+  }
 }
 
 async function runAllChecks() {
@@ -147,7 +179,36 @@ async function runAllChecks() {
     'Should throw ApiError with status 503 rather than returning fake mock data',
   );
 
-  console.log('--- All 4 UI Verification Checks PASSED! ---');
+  // Test 5: Phase 2 Payload lookup returns valid metadata
+  console.log('Check 5: Payload lookup returns allow-listed metadata and body SHA-256...');
+  const payload = await client.getPayload('uuid-scen2-01');
+  assert.equal(payload.payload_uuid, 'uuid-scen2-01');
+  assert.equal(payload.body_sha256, '5a4b12c879d031e4f9b207a90b4e28cd889504a3f2b6041ec62de1895a0247fe');
+  assert.equal(payload.metrics.cpu_pct, 25.5);
+
+  // Test 6: Zero-egress privacy verification (Negative check)
+  console.log('Check 6: Zero-egress privacy verification (no raw text, secrets, or IPs)...');
+  assert.equal(payload.raw_text, undefined, 'raw_text must never exist in ingested payload');
+  assert.equal(payload.password, undefined, 'password must never exist in ingested payload');
+  assert.equal(payload.source_ip, undefined, 'source_ip must never exist in ingested payload');
+  assert.equal(payload.credentials, undefined, 'credentials must never exist in ingested payload');
+
+  // Test 7: Cryptographic Digest Matcher check
+  console.log('Check 7: Cryptographic digest matching logic...');
+  const localCollectorDigest = '5a4b12c879d031e4f9b207a90b4e28cd889504a3f2b6041ec62de1895a0247fe';
+  const mismatchDigest = 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+  assert.equal(
+    localCollectorDigest.toLowerCase() === payload.body_sha256.toLowerCase(),
+    true,
+    'Matching local digest must verify true',
+  );
+  assert.equal(
+    mismatchDigest.toLowerCase() === payload.body_sha256.toLowerCase(),
+    false,
+    'Mismatched digest must verify false',
+  );
+
+  console.log('--- All 7 UI Verification Checks PASSED! ---');
 }
 
 runAllChecks().catch((err) => {

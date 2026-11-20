@@ -498,10 +498,148 @@ body {
 .inspector-privacy-callout {
   background-color: #0c1524;
   border: 1px solid #1e3a5f;
-  padding: 10px 14px;
+  padding: 12px 16px;
   border-radius: 4px;
   margin-bottom: 16px;
   font-size: 12px;
+}
+
+.privacy-intro {
+  margin-bottom: 8px;
+  color: var(--text-main);
+}
+
+.procedure-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background-color: #08101e;
+  border: 1px solid #172554;
+  padding: 8px 12px;
+  border-radius: 4px;
+}
+
+.proc-step {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.step-num {
+  color: #60a5fa;
+  font-weight: 700;
+}
+
+.quick-select-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.quick-select-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.quick-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.chip-btn {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.chip-btn:hover {
+  background-color: var(--bg-card-subtle);
+  border-color: var(--border-strong);
+  color: var(--text-main);
+}
+
+.chip-btn.chip-active {
+  background-color: #172554;
+  border-color: #3b82f6;
+  color: #93c5fd;
+  font-weight: 600;
+}
+
+.digest-matcher-card {
+  background-color: #0c1524;
+  border: 1px solid #1e3a5f;
+  padding: 14px 16px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.matcher-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.matcher-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: #60a5fa;
+  letter-spacing: 0.05em;
+}
+
+.matcher-help {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.matcher-help code {
+  color: #93c5fd;
+  background-color: #172554;
+  padding: 1px 4px;
+  border-radius: 2px;
+  font-family: var(--font-mono);
+}
+
+.matcher-input-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.matcher-result {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  padding: 8px 12px;
+  border-radius: 4px;
+}
+
+.result-match {
+  background-color: #064e3b;
+  color: #6ee7b7;
+  border: 1px solid #059669;
+}
+
+.result-mismatch {
+  background-color: #7f1d1d;
+  color: #fca5a5;
+  border: 1px solid #dc2626;
+}
+
+.result-icon {
+  font-weight: 700;
+  font-size: 14px;
 }
 
 .callout-title {
