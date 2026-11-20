@@ -40,6 +40,7 @@ export function App() {
 function Dashboard() {
   const [activeTab, setActiveTab] = useState<TabKey>('fleet');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [inspectPayloadUuid, setInspectPayloadUuid] = useState<string | undefined>(undefined);
   const {
     data,
     isLoading,
@@ -50,6 +51,11 @@ function Dashboard() {
     refreshNow,
     setFixtureMode,
   } = useFleetPolling(2000);
+
+  const handleInspectPayload = (uuid: string) => {
+    setInspectPayloadUuid(uuid);
+    setActiveTab('inspector');
+  };
 
   return (
     <div className="cicada-app-shell">
@@ -104,20 +110,28 @@ function Dashboard() {
               sources={data?.sources || []}
               isFixtureMode={isFixtureMode}
             />
-            <FleetOverview data={data} isLoading={isLoading} />
+            <FleetOverview
+              data={data}
+              isLoading={isLoading}
+              isFixtureMode={isFixtureMode}
+              onInspectPayload={handleInspectPayload}
+            />
             <TransitionsView isFixtureMode={isFixtureMode} />
           </div>
         )}
 
         {activeTab === 'inspector' && (
           <div className="tab-pane">
-            <PayloadInspector isFixtureMode={isFixtureMode} />
+            <PayloadInspector isFixtureMode={isFixtureMode} initialUuid={inspectPayloadUuid} />
           </div>
         )}
 
         {activeTab === 'incidents' && (
           <div className="tab-pane">
-            <IncidentDetailView isFixtureMode={isFixtureMode} />
+            <IncidentDetailView
+              isFixtureMode={isFixtureMode}
+              onInspectPayload={handleInspectPayload}
+            />
           </div>
         )}
 

@@ -5,14 +5,22 @@ import { MOCK_PAYLOAD_SAMPLE, MOCK_PAYLOADS_STORE } from '../fixtures/metadataFi
 
 interface PayloadInspectorProps {
   isFixtureMode: boolean;
+  initialUuid?: string;
 }
 
-export const PayloadInspector: React.FC<PayloadInspectorProps> = ({ isFixtureMode }) => {
-  const [uuidInput, setUuidInput] = useState(MOCK_PAYLOAD_SAMPLE.payload_uuid);
+export const PayloadInspector: React.FC<PayloadInspectorProps> = ({ isFixtureMode, initialUuid }) => {
+  const [uuidInput, setUuidInput] = useState(initialUuid || MOCK_PAYLOAD_SAMPLE.payload_uuid);
   const [payload, setPayload] = useState<PayloadDetail | null>(isFixtureMode ? MOCK_PAYLOAD_SAMPLE : null);
   const [loading, setLoading] = useState(false);
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [localDigestInput, setLocalDigestInput] = useState<string>('');
+
+  React.useEffect(() => {
+    if (initialUuid) {
+      setUuidInput(initialUuid);
+      executeLookup(initialUuid);
+    }
+  }, [initialUuid]);
 
   const executeLookup = async (uuid: string) => {
     const targetUuid = uuid.trim();
