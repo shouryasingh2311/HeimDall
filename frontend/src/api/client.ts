@@ -20,6 +20,7 @@ import type {
   ActionProposal,
   BenchmarkRenderPayload,
   BenchmarkRenderResponse,
+  BenchmarkSummary,
   ScenarioResult,
 } from '../types/contracts';
 
@@ -221,8 +222,16 @@ export class CicadaApiClient {
     });
   }
 
+  public async getRemediationAudit(): Promise<ActionProposal[]> {
+    return this.request<ActionProposal[]>('/api/v1/remediation/audit', { method: 'GET' }, 'remediation-audit');
+  }
+
   public async getScenarioResults(): Promise<ScenarioResult[]> {
     return this.request<ScenarioResult[]>('/api/v1/scenario-results', { method: 'GET' }, 'scenarios');
+  }
+
+  public async getBenchmarks(): Promise<BenchmarkSummary> {
+    return this.request<BenchmarkSummary>('/api/v1/benchmarks', { method: 'GET' }, 'benchmarks');
   }
 
   /**

@@ -179,6 +179,16 @@ export interface BenchmarkRenderResponse {
   first_recorded: boolean;
 }
 
+export interface BenchmarkSummary {
+  render_count: number;
+  render_p50_ms: number;
+  render_p95_ms: number;
+  alert_delay_p50_ms?: number;
+  alert_delay_p95_ms?: number;
+  offline_recovery_seconds?: number;
+  timing_flags?: Record<string, boolean>;
+}
+
 export interface ScenarioResult {
   run_id: string;
   scenario_id: number;

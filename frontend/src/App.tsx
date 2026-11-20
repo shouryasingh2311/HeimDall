@@ -17,19 +17,33 @@ export function App() {
 
   return (
     <>
-      <form className="search-form" onSubmit={(event) => {
-        event.preventDefault();
-        const form = event.currentTarget;
-        const data = new FormData(form);
-        const tenant = String(data.get('tenant') ?? '').trim();
-        const token = String(data.get('token') ?? '').trim();
-        if (!tenant || !token) return;
-        apiClient.setTenant(tenant, token);
-        form.reset();
-        setSession((value) => value + 1);
-      }}>
-        <label>Tenant ID <input name="tenant" required className="input-text" /></label>
-        <label>Operator token <input name="token" type="password" required autoComplete="off" className="input-text" /></label>
+      <form
+        className="search-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const form = event.currentTarget;
+          const data = new FormData(form);
+          const tenant = String(data.get('tenant') ?? '').trim();
+          const token = String(data.get('token') ?? '').trim();
+          if (!tenant || !token) return;
+          apiClient.setTenant(tenant, token);
+          form.reset();
+          setSession((value) => value + 1);
+        }}
+      >
+        <label>
+          Tenant ID <input name="tenant" required className="input-text" />
+        </label>
+        <label>
+          Operator token{' '}
+          <input
+            name="token"
+            type="password"
+            required
+            autoComplete="off"
+            className="input-text"
+          />
+        </label>
         <button className="action-btn">Connect dashboard</button>
       </form>
       <Dashboard key={session} />
@@ -41,6 +55,8 @@ function Dashboard() {
   const [activeTab, setActiveTab] = useState<TabKey>('fleet');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [inspectPayloadUuid, setInspectPayloadUuid] = useState<string | undefined>(undefined);
+  const [targetIncidentId, setTargetIncidentId] = useState<string | undefined>(undefined);
+
   const {
     data,
     isLoading,
@@ -57,6 +73,11 @@ function Dashboard() {
     setActiveTab('inspector');
   };
 
+  const handleSelectIncident = (incidentId: string) => {
+    setTargetIncidentId(incidentId);
+    setActiveTab('incidents');
+  };
+
   return (
     <div className="cicada-app-shell">
       <ConnectionBanner
@@ -71,9 +92,13 @@ function Dashboard() {
         isLoading={isLoading}
       />
 
-      <nav className="tab-navigation" aria-label="Dashboard views">
+      <nav className="tab-navigation" role="tablist" aria-label="Dashboard operational views">
         <button
           type="button"
+          role="tab"
+          id="tab-fleet"
+          aria-selected={activeTab === 'fleet'}
+          aria-controls="panel-fleet"
           className={`tab-btn ${activeTab === 'fleet' ? 'active' : ''}`}
           onClick={() => setActiveTab('fleet')}
         >
@@ -81,6 +106,10 @@ function Dashboard() {
         </button>
         <button
           type="button"
+          role="tab"
+          id="tab-inspector"
+          aria-selected={activeTab === 'inspector'}
+          aria-controls="panel-inspector"
           className={`tab-btn ${activeTab === 'inspector' ? 'active' : ''}`}
           onClick={() => setActiveTab('inspector')}
         >
@@ -88,6 +117,10 @@ function Dashboard() {
         </button>
         <button
           type="button"
+          role="tab"
+          id="tab-incidents"
+          aria-selected={activeTab === 'incidents'}
+          aria-controls="panel-incidents"
           className={`tab-btn ${activeTab === 'incidents' ? 'active' : ''}`}
           onClick={() => setActiveTab('incidents')}
         >
@@ -95,6 +128,10 @@ function Dashboard() {
         </button>
         <button
           type="button"
+          role="tab"
+          id="tab-scenarios"
+          aria-selected={activeTab === 'scenarios'}
+          aria-controls="panel-scenarios"
           className={`tab-btn ${activeTab === 'scenarios' ? 'active' : ''}`}
           onClick={() => setActiveTab('scenarios')}
         >
@@ -104,7 +141,13 @@ function Dashboard() {
 
       <main className="cicada-main-content">
         {activeTab === 'fleet' && (
-          <div className="tab-pane">
+          <div
+            id="panel-fleet"
+            role="tabpanel"
+            aria-labelledby="tab-fleet"
+            tabIndex={0}
+            className="tab-pane"
+          >
             <BufferStatusCard
               collectors={data?.collectors || []}
               sources={data?.sources || []}
@@ -121,23 +164,46 @@ function Dashboard() {
         )}
 
         {activeTab === 'inspector' && (
-          <div className="tab-pane">
+          <div
+            id="panel-inspector"
+            role="tabpanel"
+            aria-labelledby="tab-inspector"
+            tabIndex={0}
+            className="tab-pane"
+          >
             <PayloadInspector isFixtureMode={isFixtureMode} initialUuid={inspectPayloadUuid} />
           </div>
         )}
 
         {activeTab === 'incidents' && (
-          <div className="tab-pane">
+          <div
+            id="panel-incidents"
+            role="tabpanel"
+            aria-labelledby="tab-incidents"
+            tabIndex={0}
+            className="tab-pane"
+          >
             <IncidentDetailView
               isFixtureMode={isFixtureMode}
+              initialIncidentId={targetIncidentId}
               onInspectPayload={handleInspectPayload}
             />
           </div>
         )}
 
         {activeTab === 'scenarios' && (
-          <div className="tab-pane">
-            <ScenarioResultsView isFixtureMode={isFixtureMode} />
+          <div
+            id="panel-scenarios"
+            role="tabpanel"
+            aria-labelledby="tab-scenarios"
+            tabIndex={0}
+            className="tab-pane"
+          >
+            <ScenarioResultsView
+              isFixtureMode={isFixtureMode}
+              onInspectPayload={handleInspectPayload}
+              onSelectIncident={handleSelectIncident}
+            />
           </div>
         )}
       </main>
@@ -149,6 +215,8 @@ function Dashboard() {
           <span>Scope: {apiClient.getTenantId()}</span>
           <span>&bull;</span>
           <span>Timing Resolution: performance.now() &plusmn;0.1ms</span>
+          <span>&bull;</span>
+          <span>Render Benchmarks Recorded: {apiClient.getRenderedCount()}</span>
         </div>
         <div className="footer-right">
           <span>Prototype</span>

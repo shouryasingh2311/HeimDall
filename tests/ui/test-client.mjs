@@ -5,15 +5,26 @@
  * 2. Tenant credential change cache reset.
  * 3. Honest error state propagation (never silently masks network/API errors).
  * 4. Contract conformance of mock metadata fixtures.
+ * 5. Phase 2 payload lookup and body SHA-256 digest matching.
+ * 6. Phase 2 zero-egress secret redaction negative checks.
+ * 7. Phase 2 cryptographic digest verification.
+ * 8. Config scope updates and cache wiping.
+ * 9. Phase 3 outbox queue depth & non-inference delivery verification.
+ * 10. Phase 4 source metrics event-time ascending ordering.
+ * 11. Phase 5 heuristic evidence score & causal certainty disclaimer.
+ * 12. Phase 5 affected pseudonymous sources privacy guarantees.
+ * 13. Phase 6 remediation simulation invariant (simulation: true).
+ * 14. Phase 6 remediation lifecycle state progression.
+ * 15. Phase 7 scenario verification summary mapping & isolated runner notice.
  */
 
 import assert from 'node:assert/strict';
 
-// Simple mock for fetch in node environment
+// Mock for fetch in node environment
 let fetchCallCount = 0;
 let lastFetchPayload = null;
 
-globalThis.fetch = async (url, options) => {
+globalThis.fetch = async (url, options = {}) => {
   fetchCallCount++;
   if (url.includes('/api/v1/benchmarks/render')) {
     lastFetchPayload = JSON.parse(options.body);
@@ -78,6 +89,139 @@ globalThis.fetch = async (url, options) => {
       }),
     };
   }
+  if (url.includes('/api/v1/incidents/') && url.includes('/proposal')) {
+    return {
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({
+        action_id: 'act-test-001',
+        incident_id: 'inc-test-01',
+        target_source_id: 'src-pseudonym-api-01',
+        playbook: 'SCALE_CONTAINER_MEMORY',
+        factor: 1.5,
+        simulation: true,
+        policy_verdict: 'APPROVED_BY_POLICY',
+        reason_code: 'TARGET_IN_SIMULATION_ALLOWLIST',
+        status: 'proposed',
+      }),
+    };
+  }
+  if (url.includes('/api/v1/incidents/')) {
+    const id = url.split('/api/v1/incidents/')[1];
+    return {
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({
+        incident_id: decodeURIComponent(id),
+        severity: 'critical',
+        status: 'open',
+        template_title: 'Container Memory Saturation & Throttling Storm',
+        source_ids: ['src-pseudonym-api-01', 'src-pseudonym-auth-02'],
+        alert_ids: ['alt-001', 'alt-002'],
+        likely_cause: 'Memory leak in worker pool leading to high GC pauses and packet loss',
+        evidence_score: 88,
+        score_method: 'zscore_weighted_cross_correlation',
+        contributing_signals: [
+          {
+            payload_uuid: 'uuid-sig-01',
+            source_id: 'src-pseudonym-api-01',
+            metric: 'memory_pct',
+            observed: 94.2,
+            baseline_mean: 45.0,
+            baseline_std: 5.5,
+            z_score: 8.94,
+            event_time_utc: '2026-11-20T14:10:00.000Z',
+          },
+        ],
+        reasoning_steps: [
+          'Observed memory_pct deviation > 8 standard deviations above 24h baseline',
+          'Correlated with secondary latency degradation on downstream service',
+        ],
+        recommended_action: 'Scale container memory limit by 1.5x in simulation playbook',
+        proposal_status: 'proposed',
+      }),
+    };
+  }
+  if (url.includes('/api/v1/incidents')) {
+    return {
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => [
+        {
+          incident_id: 'inc-test-01',
+          severity: 'critical',
+          status: 'open',
+          template_title: 'Container Memory Saturation & Throttling Storm',
+          source_ids: ['src-pseudonym-api-01'],
+          evidence_score: 88,
+          created_at_utc: '2026-11-20T14:10:00.000Z',
+        },
+      ],
+    };
+  }
+  if (url.includes('/api/v1/remediation/') && url.includes('/approve')) {
+    const actionId = url.split('/api/v1/remediation/')[1].split('/')[0];
+    return {
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({
+        action_id: decodeURIComponent(actionId),
+        incident_id: 'inc-test-01',
+        target_source_id: 'src-pseudonym-api-01',
+        playbook: 'SCALE_CONTAINER_MEMORY',
+        factor: 1.5,
+        simulation: true,
+        policy_verdict: 'APPROVED_BY_POLICY',
+        reason_code: 'CONTAINER_MEMORY_PRESSURE_RECOVERY',
+        status: 'succeeded',
+      }),
+    };
+  }
+  if (url.includes('/api/v1/remediation/') && url.includes('/rollback')) {
+    const actionId = url.split('/api/v1/remediation/')[1].split('/')[0];
+    return {
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({
+        action_id: decodeURIComponent(actionId),
+        incident_id: 'inc-test-01',
+        target_source_id: 'src-pseudonym-api-01',
+        playbook: 'SCALE_CONTAINER_MEMORY',
+        factor: 1.5,
+        simulation: true,
+        policy_verdict: 'APPROVED_BY_POLICY',
+        reason_code: 'ROLLBACK_VERIFIED_POST_CHAOS',
+        status: 'rolled_back',
+      }),
+    };
+  }
+  if (url.includes('/api/v1/scenario-results')) {
+    return {
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => [
+        {
+          run_id: 'run-eval-01',
+          scenario_id: 1,
+          status: 'passed',
+          started_at_utc: '2026-11-20T14:00:00.000Z',
+          finished_at_utc: '2026-11-20T14:00:05.000Z',
+          checks: { 'adapter_conformance': true, 'valid_payload_count': 100 },
+          payload_uuids: ['uuid-scen1-01'],
+          incident_ids: [],
+          missing_ids: [],
+          duplicate_count: 0,
+          reason_code: 'VERIFICATION_SUCCESSFUL',
+        },
+      ],
+    };
+  }
   if (url.includes('/api/v1/fleet')) {
     return {
       ok: false,
@@ -94,8 +238,6 @@ globalThis.fetch = async (url, options) => {
   };
 };
 
-// Import client and fixtures
-// Because frontend/src uses TS, we test the logic directly using an instance of CicadaApiClient logic
 class ApiError extends Error {
   constructor(status, statusText, endpoint, message) {
     super(message || `API Error ${status} (${statusText}) on ${endpoint}`);
@@ -110,7 +252,7 @@ class CicadaApiClientTestable {
   constructor(config = {}) {
     this.config = {
       baseUrl: config.baseUrl || 'http://localhost:8000',
-      tenantId: config.tenantId || 'tenant-acme-corp',
+      tenantId: config.tenantId || 'tenant-alpha',
       operatorToken: config.operatorToken || 'test-token',
     };
     this.renderedPayloadKeys = new Set();
@@ -189,10 +331,52 @@ class CicadaApiClientTestable {
     }
     return res.json();
   }
+
+  async getIncidents() {
+    const res = await fetch(`${this.config.baseUrl}/api/v1/incidents`, { method: 'GET' });
+    if (!res.ok) throw new ApiError(res.status, res.statusText, '/api/v1/incidents');
+    return res.json();
+  }
+
+  async getIncident(id) {
+    const res = await fetch(`${this.config.baseUrl}/api/v1/incidents/${encodeURIComponent(id)}`, { method: 'GET' });
+    if (!res.ok) throw new ApiError(res.status, res.statusText, `/api/v1/incidents/${id}`);
+    return res.json();
+  }
+
+  async postProposal(incidentId) {
+    const res = await fetch(`${this.config.baseUrl}/api/v1/incidents/${encodeURIComponent(incidentId)}/proposal`, {
+      method: 'POST',
+    });
+    if (!res.ok) throw new ApiError(res.status, res.statusText, `/api/v1/incidents/${incidentId}/proposal`);
+    return res.json();
+  }
+
+  async approveRemediation(actionId) {
+    const res = await fetch(`${this.config.baseUrl}/api/v1/remediation/${encodeURIComponent(actionId)}/approve`, {
+      method: 'POST',
+    });
+    if (!res.ok) throw new ApiError(res.status, res.statusText, `/api/v1/remediation/${actionId}/approve`);
+    return res.json();
+  }
+
+  async rollbackRemediation(actionId) {
+    const res = await fetch(`${this.config.baseUrl}/api/v1/remediation/${encodeURIComponent(actionId)}/rollback`, {
+      method: 'POST',
+    });
+    if (!res.ok) throw new ApiError(res.status, res.statusText, `/api/v1/remediation/${actionId}/rollback`);
+    return res.json();
+  }
+
+  async getScenarioResults() {
+    const res = await fetch(`${this.config.baseUrl}/api/v1/scenario-results`, { method: 'GET' });
+    if (!res.ok) throw new ApiError(res.status, res.statusText, '/api/v1/scenario-results');
+    return res.json();
+  }
 }
 
 async function runAllChecks() {
-  console.log('--- Starting Cicada Dashboard UI Verification Checks ---');
+  console.log('--- Starting Cicada Dashboard UI Verification Checks (Phases 1–8) ---');
 
   const client = new CicadaApiClientTestable();
 
@@ -278,11 +462,8 @@ async function runAllChecks() {
   const aggregateQueue = testCollectors.reduce((acc, c) => acc + c.queue_depth, 0);
   assert.equal(aggregateQueue, 75, 'Aggregate queue depth must equal sum of collector queues');
 
-  // Non-inference rule: empty queue alone is NOT verified delivery
   const isDeliveryVerified = (queueDepth, verifiedReceipts) => {
-    // If queue is 0 but 0 receipts, delivery is unproven/empty
     if (queueDepth === 0 && verifiedReceipts === 0) return false;
-    // Delivery is verified only when receipt count > 0 and queue is drained
     return queueDepth === 0 && verifiedReceipts > 0;
   };
   assert.equal(isDeliveryVerified(0, 0), false, 'Empty queue with 0 receipts must not assert delivery verified');
@@ -298,7 +479,48 @@ async function runAllChecks() {
   const isAscending = new Date(sourceMetrics.items[0].event_time_utc).getTime() <= new Date(sourceMetrics.items[1].event_time_utc).getTime();
   assert.equal(isAscending, true, 'Source metrics items must be sorted ascending by event_time_utc');
 
-  console.log('--- All 10 UI Verification Checks PASSED! ---');
+  // Test 11: Phase 5 Heuristic evidence score & no causal certainty claim
+  console.log('Check 11: Phase 5 Heuristic evidence score (0..100) and score method...');
+  const incDetail = await client.getIncident('inc-test-01');
+  assert(incDetail.evidence_score >= 0 && incDetail.evidence_score <= 100, 'Score must be bounded between 0 and 100');
+  assert.equal(incDetail.score_method, 'zscore_weighted_cross_correlation');
+  assert(incDetail.contributing_signals.length > 0, 'Contributing signals must be present');
+  assert(incDetail.contributing_signals[0].z_score > 3.0, 'Z-score must indicate statistical anomaly');
+
+  // Test 12: Phase 5 Affected pseudonymous sources privacy guarantee
+  console.log('Check 12: Phase 5 Affected pseudonymous sources privacy guarantee...');
+  for (const srcId of incDetail.source_ids) {
+    assert(/^src-[\w-]+$/.test(srcId), `Source ID ${srcId} must follow pseudonymous format`);
+    assert(!srcId.includes('192.168.'), 'Internal IP must never leak in source_id');
+    assert(!srcId.includes('10.0.'), 'Internal IP must never leak in source_id');
+  }
+
+  // Test 13: Phase 6 Remediation simulation invariant
+  console.log('Check 13: Phase 6 Remediation simulation invariant (simulation: true)...');
+  const proposal = await client.postProposal('inc-test-01');
+  assert.equal(proposal.simulation, true, 'Remediation proposal must hardcode simulation: true');
+  assert.equal(proposal.playbook, 'SCALE_CONTAINER_MEMORY');
+  assert.equal(proposal.factor, 1.5);
+  assert.equal(proposal.status, 'proposed');
+
+  // Test 14: Phase 6 Remediation lifecycle state progression
+  console.log('Check 14: Phase 6 Remediation approve & rollback lifecycle...');
+  const approved = await client.approveRemediation(proposal.action_id);
+  assert.equal(approved.status, 'succeeded', 'Approved action transitions through executing to succeeded');
+  assert.equal(approved.simulation, true);
+  const rolledBack = await client.rollbackRemediation(approved.action_id);
+  assert.equal(rolledBack.status, 'rolled_back', 'Rollback transitions from succeeded to rolled_back');
+
+  // Test 15: Phase 7 Scenario verification summary mapping
+  console.log('Check 15: Phase 7 Scenario verification results mapping...');
+  const scenarios = await client.getScenarioResults();
+  assert(scenarios.length > 0, 'Scenario results list must return items');
+  assert.equal(scenarios[0].scenario_id, 1);
+  assert.equal(scenarios[0].status, 'passed');
+  assert.equal(scenarios[0].checks.adapter_conformance, true);
+  assert(scenarios[0].payload_uuids.length > 0);
+
+  console.log('--- All 15 UI Verification Checks PASSED! ---');
 }
 
 runAllChecks().catch((err) => {

@@ -12,6 +12,7 @@ import type {
   IncidentSummary,
   IncidentDetail,
   ActionProposal,
+  BenchmarkSummary,
   ScenarioResult,
 } from '../types/contracts';
 
@@ -574,5 +575,43 @@ export const MOCK_SCENARIO_RESULTS: ScenarioResult[] = [
     missing_ids: [],
     duplicate_count: 30,
     reason_code: 'DEDUP_AND_ORDER_VERIFIED',
+  },
+];
+
+export const MOCK_BENCHMARK_SUMMARY: BenchmarkSummary = {
+  render_count: 42,
+  render_p50_ms: 18.4,
+  render_p95_ms: 45.2,
+  alert_delay_p50_ms: 820.0,
+  alert_delay_p95_ms: 1450.0,
+  offline_recovery_seconds: 4.2,
+  timing_flags: {
+    clock_uncertainty_under_100ms: true,
+    first_render_dedup_active: true,
+  },
+};
+
+export const MOCK_REMEDIATION_AUDIT: ActionProposal[] = [
+  {
+    action_id: 'act-hist-001',
+    incident_id: 'inc-demo-mem-01',
+    target_source_id: 'src-payment-proc-01',
+    playbook: 'SCALE_CONTAINER_MEMORY',
+    factor: 1.5,
+    simulation: true,
+    policy_verdict: 'APPROVED_BY_POLICY',
+    reason_code: 'CONTAINER_MEMORY_PRESSURE_RECOVERY',
+    status: 'succeeded',
+  },
+  {
+    action_id: 'act-hist-002',
+    incident_id: 'inc-scen4-01',
+    target_source_id: 'src-order-stream-03',
+    playbook: 'SCALE_CONTAINER_MEMORY',
+    factor: 1.5,
+    simulation: true,
+    policy_verdict: 'APPROVED_BY_POLICY',
+    reason_code: 'ROLLBACK_VERIFIED_POST_CHAOS',
+    status: 'rolled_back',
   },
 ];
