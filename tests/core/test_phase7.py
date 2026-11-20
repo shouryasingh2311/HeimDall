@@ -109,10 +109,10 @@ def test_live_scenarios_repeat_and_report_only_observed_results(service, tmp_pat
         )
         assert "8. Demo remediation: passed" in report.stdout and "V00: BLOCKED" in report.stdout
         if os.getenv("HEIMDAL_TEST_DASHBOARD"):
-            verify_scenario_dashboard(central, viewer)
+            verify_scenario_dashboard(central, viewer, operator(runtime, "beta"))
 
 
-def verify_scenario_dashboard(client, viewer):
+def verify_scenario_dashboard(client, alpha, beta):
     from playwright.sync_api import expect, sync_playwright
 
     origin = str(client.base_url).rstrip("/")
@@ -130,9 +130,18 @@ def verify_scenario_dashboard(client, viewer):
 
         page.route(f"{origin}/**", forward)
         page.goto(origin)
-        page.get_by_label("Tenant ID").fill(viewer["X-Tenant-ID"])
-        page.get_by_label("Operator token").fill(viewer["Authorization"].split()[1])
-        page.get_by_role("button", name="Connect dashboard").click()
-        page.get_by_role("tab", name="Scenario Verification (1–8)").click()
+
+        def open_scenarios(viewer):
+            page.get_by_label("Tenant ID").fill(viewer["X-Tenant-ID"])
+            page.get_by_label("Operator token").fill(viewer["Authorization"].split()[1])
+            page.get_by_role("button", name="Connect dashboard").click()
+            page.get_by_role("tab", name="Scenario Verification (1–8)").click()
+
+        open_scenarios(alpha)
         expect(page.get_by_text("8 / 8", exact=True)).to_be_visible()
         expect(page.get_by_text("Operator-approved simulation and rollback (V11)", exact=True)).to_be_visible()
+        open_scenarios(beta)
+        expect(page.get_by_text("No scenario verification results reported yet.", exact=False)).to_be_visible()
+        expect(page.get_by_text("8 / 8", exact=True)).to_have_count(0)
+        open_scenarios(alpha)
+        expect(page.get_by_text("8 / 8", exact=True)).to_be_visible()

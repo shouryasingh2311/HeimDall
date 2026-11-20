@@ -65,7 +65,9 @@ def evaluate_metrics(payload: MetadataPayload, policy: HealthPolicy, baselines: 
         candidate = False
         start = mean = deviation = z = None
         if metric in FLOORS:
-            baseline = baselines.setdefault(metric, Baseline())
+            # Explicit demo samples have a different operating regime.
+            series = f"demo:{metric}" if payload.simulation else metric
+            baseline = baselines.setdefault(series, Baseline())
             candidate, start, mean, deviation, z = baseline.observe(value, FLOORS[metric], timestamp, severe)
             ready = ready and mean is not None
         if severe or start:

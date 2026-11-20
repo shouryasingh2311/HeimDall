@@ -20,7 +20,7 @@ Heimdal separates data collection from centralized analysis across physical and 
 |   +------------------------------------------------------------------+  |
 |   | 1. Input Adapter: Maps raw inputs to internal RawEvent           |  |
 |   | 2. Security Sanitizer: Regex scrubbing + nested allow-listing    |  |
-|   | 3. Pseudonymizer: Salted HMAC for source identity                |  |
+|   | 3. Pseudonymizer: Keyed HMAC for source identity                |  |
 |   | 4. Serialization: Canonical JSON (sorted keys, compact)          |  |
 |   | 5. Outbox: SQLite WAL + FULL sync (persist before transmit)      |  |
 |   | 6. HTTPX Sender: Verified HTTPS with backoff + jitter            |  |
@@ -28,12 +28,12 @@ Heimdal separates data collection from centralized analysis across physical and 
 |        |                                                    ^           |
 |        | Local Loopback (HTTP)                              | Loopback  |
 |        v                                                    v           |
-|  [ Egress Proof Panel ]                            [ Local Preview DB ] |
+|  [ Egress Proof Panel ]                            [ Local Preview Buffer ] |
 |   - Bounded ring buffer (500 records / 15 mins)                         |
 +-------------------------------------------------------------------------+
                                    |
                       Verified HTTPS (Port 8443)
-                      - TLS 1.3 / Strict CA check
+                      - TLS with CA and hostname checks
                       - Bearer token authentication
                       - Canonical JSON MetadataPayload
                                    |
@@ -77,13 +77,13 @@ Heimdal separates data collection from centralized analysis across physical and 
 
 ## 2. Cryptographic Security & Identity Model
 
-### 2.1 Transport Layer Security (TLS 1.3)
+### 2.1 Transport Layer Security
 * **Zero Insecure Fallbacks:** Production and development collectors enforce strict TLS verification using a local CA root. `verify=False` is strictly prohibited.
-* **Server SAN Verification:** Server certificates include Subject Alternative Names for `localhost`, `127.0.0.1`, and explicit regional hostnames (`us-east.heimdal.local`, `eu-west.heimdal.local`).
+* **Server SAN Verification:** The generated server certificate covers `localhost` and `127.0.0.1`. A regional deployment would need independently configured endpoints, certificates and storage.
 * **Client Handshake:** Python's `HTTPX` client verifies both the certificate authority trust chain and server hostname before any payload bytes are transmitted.
 
 ### 2.2 Identity & Role-Based Access Control (RBAC)
-Every request to the SaaS platform requires a Bearer token cryptographically mapped to an authenticated identity:
+SaaS data and action routes require a bearer token mapped to an authenticated identity. The dashboard assets and process health check are public.
 
 ```python
 class AuthenticatedIdentity:
@@ -93,13 +93,13 @@ class AuthenticatedIdentity:
     assigned_region: str
 ```
 
-* **Tenant Boundary Enforcement:** Every SQL query, baseline calculation, and incident search includes `WHERE tenant_id = :authenticated_tenant`. No UI selector or client header can bypass this scope.
+* **Tenant Boundary Enforcement:** Operator reads and actions use the tenant from the token. Collector ingestion additionally checks region, collector identity and source membership. Baselines and incidents are scoped by tenant.
 * **Region Affinity:** Ingest requests to `/api/v1/ingest/{region}` must match the collector's configured `assigned_region`. Mismatches are rejected with HTTP `403 Forbidden`.
 
 ### 2.3 Pseudonymization
 To eliminate the risk of leaking internal network topology or server hostnames:
-$$\text{source\_id} = \text{HMAC-SHA256}(\text{source\_key}, \text{tenant\_secret})[:16]$$
-* The SaaS tier only knows `source_id` as an opaque hex string.
+$$\text{source\_id} = \text{HMAC-SHA256}(\text{tenant\_secret}, \text{source\_key})[:32]$$
+* The SaaS tier receives a `src-` prefix followed by 32 hex digits.
 * Reversible lookup tables remain strictly inside the customer local environment.
 
 ---
@@ -160,15 +160,11 @@ CREATE TABLE collector_outbox (
 ### 4.2 Idempotent Server Commit
 Upon arrival at the central SaaS:
 1. An explicit transaction begins: `BEGIN IMMEDIATE;`
-2. An insert into `saas_metadata` is attempted:
-   ```sql
-   INSERT INTO saas_metadata (payload_uuid, tenant_id, source_id, body_sha256, event_time_utc, raw_payload)
-   VALUES (?, ?, ?, ?, ?, ?);
-   ```
-3. **If unique constraint fails:**
+2. The server checks for an existing `(tenant_id, payload_uuid)` before inserting the approved body and its digest.
+3. **If the ID already exists:**
    * If `body_sha256` matches existing record: return HTTP `200 OK` with `status: "duplicate"`. No analytics, alerts, or health transitions are recomputed.
    * If `body_sha256` differs: return HTTP `409 Conflict`. Quarantine the invalid record.
-4. **If unique constraint succeeds:**
+4. **If the ID is new:**
    * Evaluate rolling z-score detector and correlate incidents within the same atomic transaction.
    * Commit transaction: `COMMIT;`
    * Return HTTP `200 OK` with `status: "accepted"`.
@@ -192,7 +188,7 @@ The SaaS health engine classifies collectors and monitored sources into four sta
 ```
 
 * **Severity Precedence:** `POOR` > `FAIR` > `GOOD` > `EXCELLENT`. If any single active metric rule triggers `POOR`, the overall source health drops to `POOR`.
-* **Heartbeat Watchdog:** SaaS runs an independent background loop every second. If `now_utc - last_heartbeat_utc > 60s`, collector status immediately transitions to `POOR` with reason code `ERR_HEARTBEAT_TIMEOUT`.
+* **Heartbeat Watchdog:** SaaS runs an independent background loop every second. At the 55-second heartbeat expiry threshold, the next watchdog tick transitions the collector to `Poor` with reason code `heartbeat_expired`.
 * **Stale Replay Protection:** If an out-of-order or late event arrives with `event_time_utc < latest_source_time`, it is saved for historical trend charts but **cannot** alter the current live health status.
 
 ---
@@ -205,7 +201,7 @@ $$z = \frac{x_t - \mu_{t-1}}{\max(\sigma_{t-1}, \sigma_{\text{floor}})}$$
 * $\mu_{t-1}$: Rolling mean over the prior $N$ samples ($N \ge 10$ warm-up).
 * $\sigma_{t-1}$: Rolling standard deviation over the prior $N$ samples.
 * $\sigma_{\text{floor}}$: Prevents division by zero and false alerts when metrics are completely steady.
-* **Anomaly Condition:** $|z| \ge 3.0$ triggers an anomalous signal event.
+* **Anomaly Condition:** Two consecutive positive z-scores above 3 trigger a statistical alert after warm-up. Fixed severe thresholds can alert immediately.
 
 ### 6.2 Incident Correlation Engine
 When an anomaly signal occurs:
@@ -214,7 +210,7 @@ When an anomaly signal occurs:
 3. If an active incident exists within the correlation window ($\Delta t \le 60\text{s}$), the new alert is merged into the incident.
 4. If no related incident is active, a new incident is created with a unique `incident_id`.
 5. **Heuristic Evidence Score ($0..100$):**
-   $$\text{Score} = \min\left(100, 40 \times \frac{|z|}{3.0} + 20 \times \text{num\_contributing\_signals} + 20 \times \text{topology\_depth}\right)$$
+      The score adds 30 per distinct metric (at most two), 20 for a configured dependency and 20 for consistent event order, capped at 100.
 
 ---
 

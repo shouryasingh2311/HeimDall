@@ -2,11 +2,11 @@
 
 ## Current status
 
-[Phase 1](phases/01-two-tier-core-architecture-secure-transport/01-01-SUMMARY.md), [Phase 2](phases/02-local-privacy-pipeline-egress-proof-panel/02-01-SUMMARY.md), and [Phase 3](phases/03-resilient-offline-buffering-idempotent-ingestion/03-01-SUMMARY.md) are integrated. [Phase 4](phases/04-telemetry-metrics-engine-health-states-benchmarking/04-01-SUMMARY.md) adds live health, trends and timing. [Phase 5](phases/05-explainable-aiops-anomaly-detection-incident-correlation/05-01-SUMMARY.md) adds local authentication detection, explainable anomalies, and incident correlation. Phase 6 adds approved remediation in the demo simulator. V00 needs the official organizer input.
+Phases 1–7 are integrated. [Phase 8](phases/08-unified-operations-dashboard-judge-verification-suite/08-01-SUMMARY.md) records the release integration and acceptance evidence for the synthetic demo. V00 still needs the official organizer input.
 
 ## Working constraints
 
-Eight hours; three people. M1 owns heavy core work, M2 UI, M3 inputs/validation/local presentation. Use TEAM_EXECUTION.md, GIT_WORKFLOW.md and individual MEMBER guides. Contracts are specified but need G0 freeze and generated fixtures.
+Eight hours and three people. M1 owns the core and integration, M2 owns the UI, and M3 owns inputs, validation and local presentation. Use TEAM_EXECUTION.md, GIT_WORKFLOW.md and the individual member guides.
 
 | Gate | Target | Actual evidence |
 |---|---|---|
@@ -15,8 +15,8 @@ Eight hours; three people. M1 owns heavy core work, M2 UI, M3 inputs/validation/
 | G2 | 3:30 | Privacy, outbox recovery, metadata deduplication and live health verified for tested inputs. |
 | G3 | 5:00 | AIOps, incident evidence, and initial alert, render, and offline timings verified on synthetic inputs. |
 | G4 | 5:45 | [Phase 6](phases/06-autonomous-ops-simulator-policy-guarded-remediation/06-01-SUMMARY.md) verified operator approval, durable execution, recovery telemetry, and simulated rollback. |
-| G5 | 7:00 | [Phase 7](phases/07-interactive-chaos-engine-8-live-validation-scenarios/07-01-SUMMARY.md) verifies the eight scenarios on live local services. V00 and final rehearsal remain open. |
-| G6 | 8:00 | Not started |
+| G5 | 7:00 | [Phase 7](phases/07-interactive-chaos-engine-8-live-validation-scenarios/07-01-SUMMARY.md) verifies the eight scenarios on live local services. |
+| G6 | 8:00 | Synthetic demo rehearsed from a fresh runtime. V00 blocked pending official organizer input. |
 
 ## Dependencies and risks
 

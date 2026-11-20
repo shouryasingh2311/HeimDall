@@ -127,6 +127,14 @@ def create_app(settings: ServerSettings, db_path: Path, dashboard: Path | None =
         # Never echo rejected keys, values, or unapproved request bytes.
         return JSONResponse({"detail": "Invalid request schema"}, status_code=422)
 
+    @app.middleware("http")
+    async def protect_api_responses(request: Request, call_next):
+        response = await call_next(request)
+        if request.url.path.startswith("/api/"):
+            # Dashboard sessions can switch credentials while keeping the same URLs.
+            response.headers["Cache-Control"] = "private, no-store"
+        return response
+
     def collector(request: Request) -> Credential:
         return auth.require(request, "collector")
 
@@ -315,7 +323,13 @@ def create_app(settings: ServerSettings, db_path: Path, dashboard: Path | None =
 
         @app.get("/", include_in_schema=False)
         async def dashboard_index():
-            return FileResponse(index)
+            return FileResponse(index, headers={"Cache-Control": "no-cache"})
+
+        favicon = dashboard / "favicon.svg"
+        if favicon.is_file():
+            @app.get("/favicon.svg", include_in_schema=False)
+            async def dashboard_favicon():
+                return FileResponse(favicon)
 
     return app
 

@@ -72,4 +72,4 @@ Obtain actual organizer stream/format before certifying compatibility. Working t
 
 ## Current status
 
-Member 3's adapter and verification code is on `main`. Member 2's dashboard is on its feature branch. The integrated prototype and acceptance results are tracked in [STATE.md](.planning/STATE.md).
+The adapter, verification code and dashboard are integrated. See [STATE.md](.planning/STATE.md) for acceptance results and the official input dependency.

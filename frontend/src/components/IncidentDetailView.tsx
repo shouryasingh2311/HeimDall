@@ -245,7 +245,7 @@ export const IncidentDetailView: React.FC<IncidentDetailViewProps> = ({
                 <div className="item-title">{inc.template_title}</div>
                 <div className="item-meta">
                   <span>Score: {inc.evidence_score}</span>
-                  <span>{new Date(inc.created_at_utc).toLocaleTimeString()} UTC</span>
+                  <span>{new Date(inc.created_at_utc).toLocaleTimeString(undefined, { timeZone: 'UTC' })} UTC</span>
                 </div>
               </button>
             ))
