@@ -9,59 +9,14 @@ This specification documents all public and internal REST endpoints across both 
 The local collector exposes loopback-only HTTP endpoints bound to `127.0.0.1:9001` (or configured collector port). These endpoints are inaccessible from external networks and provide local auditability.
 
 ### 1. GET `/api/local/status`
-Returns queue depth, transport connectivity, and collector daemon health.
 
-* **Response Headers:** `Content-Type: application/json`
-* **Response Body (`200 OK`):**
-  ```json
-  {
-    "collector_id": "col-us-east-01",
-    "tenant_id": "tenant-alpha",
-    "version": "1.0.0",
-    "status": "online",
-    "outbox_queue_depth": 0,
-    "last_successful_send_utc": "2026-11-20T14:30:00Z",
-    "saas_connected": true
-  }
-  ```
-
----
+Requires `Authorization: Bearer <local_token>`. Returns `retained_previews` (count) and `buffering` (`not_enabled` in Phase 2).
 
 ### 2. GET `/api/local/audit`
-Returns bounded recent egress records from the local ring buffer for inspection on the Egress Proof Panel.
 
-* **Query Parameters:** `limit` (int, default 50, max 200)
-* **Response Body (`200 OK`):**
-  ```json
-  {
-    "total_buffered": 42,
-    "records": [
-      {
-        "payload_uuid": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
-        "event_time_utc": "2026-11-20T14:29:55Z",
-        "raw_preview": "2026-11-20 14:29:55 [AUTH] user=admin pass=*** FAILED",
-        "sanitized_payload": {
-          "schema_version": 1,
-          "payload_uuid": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
-          "tenant_id": "tenant-alpha",
-          "collector_id": "col-us-east-01",
-          "source_id": "src-auth-01",
-          "event_type": "auth_threat",
-          "security": {
-            "failed_attempts_count": 5,
-            "window_seconds": 10,
-            "risk_score": 85,
-            "attacker_id": "pseudo_9f1a"
-          }
-        },
-        "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "sent_status": "ACKED"
-      }
-    ]
-  }
-  ```
+Requires the same local session token. Returns an `items` array with up to 20 recent entries, newest first. Provide an optional `payload_uuid` query parameter to fetch one retained entry. The API returns 400 for an invalid UUID and 404 for an absent or expired UUID.
 
----
+Each entry includes `payload_uuid`, `policy_version`, `raw_preview` (local text with known credentials masked, or null), `approved_body` (exact outbound JSON as a string), `body_sha256`, `state`, and `receipt` (null until acknowledged). The preview buffer retains up to 500 entries for 15 minutes.
 
 ### 3. POST `/api/local/scenarios/{id}`
 Triggers an automated scenario injection on the local demo source.
