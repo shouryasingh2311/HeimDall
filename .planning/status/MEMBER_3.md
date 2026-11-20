@@ -2,7 +2,7 @@
 
 Status: in progress (Scenario harness, benchmark engine & black-box tests verified).
 Branch: feat/fixtures-validation.
-Latest commit: 550c844.
+Latest commit: 5e9aad4.
 Completed task/requirement IDs:
 - SIMU-01: Deterministic demo source (`backend/collector/demo_source.py`), JSONL adapter (`backend/collector/adapters/jsonl_adapter.py`), and organizer adapter with labelled fallback (`backend/collector/adapters/organizer_adapter.py`).
 - SIMU-02, PRIV-01..05: Secret test fixtures (`tests/scenarios/fixtures/secrets.jsonl`) and local-only proof panel (`backend/collector/static/proof.html`).
@@ -18,7 +18,7 @@ Completed task/requirement IDs:
 
 Checks executed and observed results:
 - `pytest -p no:asyncio tests/scenarios`: 18/18 PASSED (0.11s).
-- `node tests/ui/test-client.mjs`: 7/7 UI checks PASSED.
+- `node tests/ui/test-client.mjs`: 15/15 UI checks PASSED (Phases 1-8).
 - `python scripts/verification/run_scenarios.py`: 9 PASSED | 0 FAILED | 4 BLOCKED (waiting on M1 core).
   - V00: PASSED (Demo fallback mode verified; gap disclosed pending organizer format).
   - V03: PASSED (Synthetic secret fixtures and local proof layout verified).
