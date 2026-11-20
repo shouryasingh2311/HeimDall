@@ -8,7 +8,7 @@ interface PayloadInspectorProps {
 }
 
 export const PayloadInspector: React.FC<PayloadInspectorProps> = ({ isFixtureMode }) => {
-  const [uuidInput, setUuidInput] = useState(MOCK_PAYLOAD_SAMPLE.payload_uuid);
+  const [uuidInput, setUuidInput] = useState(isFixtureMode ? MOCK_PAYLOAD_SAMPLE.payload_uuid : '');
   const [payload, setPayload] = useState<PayloadDetail | null>(isFixtureMode ? MOCK_PAYLOAD_SAMPLE : null);
   const [loading, setLoading] = useState(false);
   const [lookupError, setLookupError] = useState<string | null>(null);
@@ -16,7 +16,7 @@ export const PayloadInspector: React.FC<PayloadInspectorProps> = ({ isFixtureMod
 
   const executeLookup = async (uuid: string) => {
     const targetUuid = uuid.trim();
-    if (!targetUuid) return;
+    if (!targetUuid || loading) return;
     setLocalDigestInput('');
     setPayload(null);
 
@@ -81,7 +81,7 @@ export const PayloadInspector: React.FC<PayloadInspectorProps> = ({ isFixtureMod
             <a href="http://localhost:9001/audit" target="_blank" rel="noreferrer" className="external-link">
               http://localhost:9001/audit
             </a>{' '}
-            to view private raw logs and secrets (e.g. <code>api_key=sk_live_...</code>).
+            to inspect the local preview (known credentials masked) and the exact outbound body.
           </div>
           <div className="proc-step">
             <span className="step-num">Step 2:</span> Inspect the identical <code>payload_uuid</code> in this central window.
@@ -93,7 +93,7 @@ export const PayloadInspector: React.FC<PayloadInspectorProps> = ({ isFixtureMod
       </div>
 
       {/* Quick Select Preset UUIDs */}
-      <div className="quick-select-row">
+      {isFixtureMode && <div className="quick-select-row">
         <span className="quick-select-label">Sample Payloads:</span>
         <div className="quick-chips">
           {Object.keys(MOCK_PAYLOADS_STORE).map((uid) => (
@@ -107,7 +107,7 @@ export const PayloadInspector: React.FC<PayloadInspectorProps> = ({ isFixtureMod
             </button>
           ))}
         </div>
-      </div>
+      </div>}
 
       <form onSubmit={handleLookup} className="search-form">
         <label htmlFor="payload-uuid" className="input-label">Inspect Payload UUIDv5</label>
@@ -116,7 +116,7 @@ export const PayloadInspector: React.FC<PayloadInspectorProps> = ({ isFixtureMod
             id="payload-uuid"
             type="text"
             className="input-text mono"
-            placeholder="e.g. uuid-scen2-01 or e2b3c4d5-6789-5000-8000-abcdef123456"
+            placeholder={isFixtureMode ? 'e.g. uuid-scen2-01' : 'Paste the collector payload UUID'}
             value={uuidInput}
             onChange={(e) => setUuidInput(e.target.value)}
           />
@@ -214,9 +214,9 @@ export const PayloadInspector: React.FC<PayloadInspectorProps> = ({ isFixtureMod
               </span>
             </div>
             <div className="meta-item">
-              <span className="meta-key">Raw Log Egress Audit</span>
+              <span className="meta-key">Receipt contents</span>
               <span className="meta-val">
-                <span className="status-tag tag-valid">ZERO RAW LEAKAGE (STRICTLY DROPPED)</span>
+                <span className="status-tag tag-valid">APPROVED METADATA</span>
               </span>
             </div>
             <div className="meta-item full-width">

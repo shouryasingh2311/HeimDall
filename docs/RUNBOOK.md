@@ -25,16 +25,12 @@ npm --prefix frontend run build
 
 ### Scenario 1: Raw Log Contains a Secret (`V03`)
 * **Objective:** Demonstrate that sensitive data (passwords, tokens, API keys) never leave the customer environment.
-* **Execution:**
-  ```bash
-  python -m scripts.verification.run_scenario --scenario 1
-  ```
+* **Execution:** Start the collector and SaaS with the synthetic input and live dashboard in [the local runtime guide](PHASE1.md).
 * **Judge Verification Steps:**
-  1. Open the **Local Egress Proof Panel** in a browser: `http://127.0.0.1:9001/`
-  2. Observe the injected log line containing raw secrets (e.g., `Bearer eyJhbGciOi...` and `password=SuperSecretPassword123!`).
-  3. Inspect the adjacent "Sanitized Egress JSON" box: observe that raw text is dropped, secret patterns are purged, and only typed metrics leave.
-  4. Open the **Central SaaS Dashboard**: `http://localhost:5173/egress-inspector`
-  5. Compare the SHA-256 wire digest between the local proof panel and the central receipt. They match bit-for-bit, proving zero secret transmission.
+  1. Open `http://localhost:9001/audit` and enter the collector's local session token.
+  2. Fetch a retained record. Check that known credentials are masked in the local preview and that the exact approved outbound body contains only the allowed metadata fields.
+  3. Open the live dashboard at `https://localhost:8443` and connect with the operator credentials for the collector's tenant.
+  4. Look up the same payload UUID and paste the SHA-256 digest from the local panel. A match confirms the received body matches the inspected outbound body.
 
 ---
 
@@ -181,7 +177,7 @@ When evaluating teams, judges are encouraged to ask the following key questions:
 > **Answer:** Raw log text, original payloads, unredacted syslog lines, passwords, API tokens, usernames, and real IP addresses stay strictly on the local collector host. Only strongly-typed Pydantic metadata leaves: normalized metrics (0–100 floats), UTC event timestamps, HMAC pseudonymous source IDs, health status tokens, and aggregated threat summaries.
 
 ### Q2: How do you prove that secrets were not sent?
-> **Answer:** We provide a local loopback Egress Proof Panel (`http://127.0.0.1:9001`). Operators can inspect the exact canonical wire JSON before egress. Furthermore, the local SHA-256 byte digest matches the SaaS ingest receipt bit-for-bit, proving zero unredacted text crossed the boundary.
+> **Answer:** The local proof panel at `http://localhost:9001/audit` shows the exact outbound JSON for inspection. Matching its SHA-256 digest with the SaaS receipt confirms that the inspected bytes match the received bytes.
 
 ### Q3: What happens when SaaS is unreachable?
 > **Answer:** The collector commits every event to an aiosqlite outbox (`PRAGMA synchronous = FULL`, WAL mode) before network send. During an outage, events accumulate safely. The collector uses exponential backoff with jitter (`1s`, `2s`, `4s`, `8s`). Once SaaS is restored, the backlog is drained in order. Deduplication constraints on SaaS ensure zero records are lost and zero duplicates are created.
