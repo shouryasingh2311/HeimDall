@@ -576,3 +576,28 @@ export const MOCK_SCENARIO_RESULTS: ScenarioResult[] = [
     reason_code: 'DEDUP_AND_ORDER_VERIFIED',
   },
 ];
+
+export const MOCK_REMEDIATION_AUDIT: ActionProposal[] = [
+  {
+    action_id: 'act-hist-001',
+    incident_id: 'inc-demo-mem-01',
+    target_source_id: 'src-payment-proc-01',
+    playbook: 'SCALE_CONTAINER_MEMORY',
+    factor: 1.5,
+    simulation: true,
+    policy_verdict: 'APPROVED_BY_POLICY',
+    reason_code: 'CONTAINER_MEMORY_PRESSURE_RECOVERY',
+    status: 'succeeded',
+  },
+  {
+    action_id: 'act-hist-002',
+    incident_id: 'inc-scen4-01',
+    target_source_id: 'src-order-stream-03',
+    playbook: 'SCALE_CONTAINER_MEMORY',
+    factor: 1.5,
+    simulation: true,
+    policy_verdict: 'APPROVED_BY_POLICY',
+    reason_code: 'ROLLBACK_VERIFIED_POST_CHAOS',
+    status: 'rolled_back',
+  },
+];

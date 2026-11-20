@@ -1511,3 +1511,222 @@ body {
   align-items: center;
   margin-bottom: 8px;
 }
+
+/* Phase 5: Pseudonymous Source Badges & Scores */
+.source-badges-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.pseudonym-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-main);
+}
+
+.privacy-dot {
+  color: var(--status-good);
+  font-size: 10px;
+}
+
+.score-max {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.score-method {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Phase 6: Remediation Action Lifecycle & Simulation Controls */
+.sim-notice {
+  background-color: #1a2234;
+  border-left: 3px solid var(--accent-blue);
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  border-radius: 0 4px 4px 0;
+}
+
+.sim-notice strong {
+  color: var(--text-main);
+}
+
+.action-status-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 14px;
+  margin-top: 10px;
+}
+
+.action-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.meta-label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  margin-bottom: 2px;
+}
+
+.state-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 3px;
+  background-color: #1e293b;
+  border: 1px solid var(--border-strong);
+  font-size: 12px;
+}
+
+.no-proposal-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px;
+  background-color: var(--bg-surface);
+  border: 1px dashed var(--border-strong);
+  border-radius: 4px;
+  margin-top: 10px;
+}
+
+.btn-request-proposal {
+  background-color: var(--accent-blue);
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.btn-request-proposal:hover:not(:disabled) {
+  background-color: var(--accent-blue-hover);
+}
+
+.btn-request-proposal:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.audit-trail-section {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 12px;
+}
+
+.audit-trail-title {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+/* Phase 7: Scenario Verification Scoreboard & Grid */
+.scenario-scoreboard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.score-stat {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.stat-val {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.scenario-links-row {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.links-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.badges-flow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip-btn {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  padding: 2px 8px;
+  color: var(--accent-blue);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.chip-btn:hover {
+  background-color: var(--border-subtle);
+  color: #ffffff;
+}
+
+.verdict-line {
+  margin-top: 4px;
+  color: var(--text-main);
+}
+
+/* Accessibility: Focus outlines */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}

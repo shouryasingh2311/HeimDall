@@ -19,19 +19,33 @@ export function App() {
 
   return (
     <>
-      <form className="search-form" onSubmit={(event) => {
-        event.preventDefault();
-        const form = event.currentTarget;
-        const data = new FormData(form);
-        const tenant = String(data.get('tenant') ?? '').trim();
-        const token = String(data.get('token') ?? '').trim();
-        if (!tenant || !token) return;
-        apiClient.setTenant(tenant, token);
-        form.reset();
-        resetDashboard();
-      }}>
-        <label>Tenant ID <input name="tenant" required className="input-text" /></label>
-        <label>Operator token <input name="token" type="password" required autoComplete="off" className="input-text" /></label>
+      <form
+        className="search-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const form = event.currentTarget;
+          const data = new FormData(form);
+          const tenant = String(data.get('tenant') ?? '').trim();
+          const token = String(data.get('token') ?? '').trim();
+          if (!tenant || !token) return;
+          apiClient.setTenant(tenant, token);
+          form.reset();
+          resetDashboard();
+        }}
+      >
+        <label>
+          Tenant ID <input name="tenant" required className="input-text" />
+        </label>
+        <label>
+          Operator token{' '}
+          <input
+            name="token"
+            type="password"
+            required
+            autoComplete="off"
+            className="input-text"
+          />
+        </label>
         <button className="action-btn">Connect dashboard</button>
       </form>
       <Dashboard key={session} onCredentialsChanged={resetDashboard} />
@@ -43,6 +57,8 @@ function Dashboard({ onCredentialsChanged }: { onCredentialsChanged: () => void 
   const [activeTab, setActiveTab] = useState<TabKey>('fleet');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [inspectPayloadUuid, setInspectPayloadUuid] = useState<string | undefined>(undefined);
+  const [targetIncidentId, setTargetIncidentId] = useState<string | undefined>(undefined);
+
   const {
     data,
     isLoading,
@@ -59,6 +75,11 @@ function Dashboard({ onCredentialsChanged }: { onCredentialsChanged: () => void 
     setActiveTab('inspector');
   };
 
+  const handleSelectIncident = (incidentId: string) => {
+    setTargetIncidentId(incidentId);
+    setActiveTab('incidents');
+  };
+
   return (
     <div className="cicada-app-shell">
       <ConnectionBanner
@@ -73,9 +94,13 @@ function Dashboard({ onCredentialsChanged }: { onCredentialsChanged: () => void 
         isLoading={isLoading}
       />
 
-      <nav className="tab-navigation" aria-label="Dashboard views">
+      <nav className="tab-navigation" role="tablist" aria-label="Dashboard operational views">
         <button
           type="button"
+          role="tab"
+          id="tab-fleet"
+          aria-selected={activeTab === 'fleet'}
+          aria-controls="panel-fleet"
           className={`tab-btn ${activeTab === 'fleet' ? 'active' : ''}`}
           onClick={() => setActiveTab('fleet')}
         >
@@ -83,6 +108,10 @@ function Dashboard({ onCredentialsChanged }: { onCredentialsChanged: () => void 
         </button>
         <button
           type="button"
+          role="tab"
+          id="tab-inspector"
+          aria-selected={activeTab === 'inspector'}
+          aria-controls="panel-inspector"
           className={`tab-btn ${activeTab === 'inspector' ? 'active' : ''}`}
           onClick={() => setActiveTab('inspector')}
         >
@@ -90,6 +119,10 @@ function Dashboard({ onCredentialsChanged }: { onCredentialsChanged: () => void 
         </button>
         <button
           type="button"
+          role="tab"
+          id="tab-incidents"
+          aria-selected={activeTab === 'incidents'}
+          aria-controls="panel-incidents"
           className={`tab-btn ${activeTab === 'incidents' ? 'active' : ''}`}
           onClick={() => setActiveTab('incidents')}
         >
@@ -97,6 +130,10 @@ function Dashboard({ onCredentialsChanged }: { onCredentialsChanged: () => void 
         </button>
         <button
           type="button"
+          role="tab"
+          id="tab-scenarios"
+          aria-selected={activeTab === 'scenarios'}
+          aria-controls="panel-scenarios"
           className={`tab-btn ${activeTab === 'scenarios' ? 'active' : ''}`}
           onClick={() => setActiveTab('scenarios')}
         >
@@ -106,7 +143,13 @@ function Dashboard({ onCredentialsChanged }: { onCredentialsChanged: () => void 
 
       <main className="cicada-main-content">
         {activeTab === 'fleet' && (
-          <div className="tab-pane">
+          <div
+            id="panel-fleet"
+            role="tabpanel"
+            aria-labelledby="tab-fleet"
+            tabIndex={0}
+            className="tab-pane"
+          >
             <BufferStatusCard
               collectors={data?.collectors || []}
               sources={data?.sources || []}
@@ -124,23 +167,46 @@ function Dashboard({ onCredentialsChanged }: { onCredentialsChanged: () => void 
         )}
 
         {activeTab === 'inspector' && (
-          <div className="tab-pane">
+          <div
+            id="panel-inspector"
+            role="tabpanel"
+            aria-labelledby="tab-inspector"
+            tabIndex={0}
+            className="tab-pane"
+          >
             <PayloadInspector key={String(isFixtureMode)} isFixtureMode={isFixtureMode} initialUuid={inspectPayloadUuid} />
           </div>
         )}
 
         {activeTab === 'incidents' && (
-          <div className="tab-pane">
+          <div
+            id="panel-incidents"
+            role="tabpanel"
+            aria-labelledby="tab-incidents"
+            tabIndex={0}
+            className="tab-pane"
+          >
             <IncidentDetailView
               isFixtureMode={isFixtureMode}
+              initialIncidentId={targetIncidentId}
               onInspectPayload={handleInspectPayload}
             />
           </div>
         )}
 
         {activeTab === 'scenarios' && (
-          <div className="tab-pane">
-            <ScenarioResultsView isFixtureMode={isFixtureMode} />
+          <div
+            id="panel-scenarios"
+            role="tabpanel"
+            aria-labelledby="tab-scenarios"
+            tabIndex={0}
+            className="tab-pane"
+          >
+            <ScenarioResultsView
+              isFixtureMode={isFixtureMode}
+              onInspectPayload={handleInspectPayload}
+              onSelectIncident={handleSelectIncident}
+            />
           </div>
         )}
       </main>
