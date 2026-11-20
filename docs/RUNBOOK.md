@@ -6,6 +6,16 @@ Procedures for evaluating, running, and verifying the Heimdal observability plat
 
 ## 1. Start the live demo on Windows
 
+Double-click **Start-Heimdal.cmd** in the repository folder, or run `.\Start-Heimdal.cmd` from PowerShell. It uses the installed Python and Node.js, sets up dependencies, builds the dashboard, and starts both services. Keep the launcher window open.
+
+1. On the first run, the launcher asks whether to trust the demo certificate it generated. Type **Y** and accept the Windows prompt if it appears. The dashboard and local scenario runner will open.
+2. On the dashboard enter **tenant-alpha**. In the launcher, type **1** and press Enter to copy the operator token. Paste it into **Operator token** and click **Connect dashboard**.
+3. In the launcher type **2** and press Enter. Paste the copied token into **Local session token** on the scenario runner. Start the scenarios below one at a time. Type **Q** in the launcher when you want to stop both services.
+
+The launcher reuses `.heimdal/scenario-demo` on later runs. To rehearse with fresh data or create a new certificate after expiry, run `.\Start-Heimdal.cmd --runtime .heimdal/fresh-demo`. Remove the demo CA from **Manage user certificates → Trusted Root Certification Authorities → Certificates** after the event.
+
+### Manual startup
+
 1. Open PowerShell in the repository folder and run the [setup commands](../README.md#getting-started--local-setup). Stop any older Heimdal processes with **Ctrl+C** in their terminals so ports 8443 and 9001 are free.
 2. Generate a fresh runtime once. Reuse it for restarts, or choose a new directory for a clean slate. Use the same directory in every command.
 
@@ -59,7 +69,7 @@ Open **Measured render timing** on the fleet page while sources are visible. The
 * Breach-to-alert latency: evaluates alert record creation timestamp minus fault injection timestamp (target: $\le 15\text{s}$).
 * Offline detection delay: evaluates transition to `Poor` timestamp minus the last accepted heartbeat timestamp (target: $\le 60\text{s}$).
 
-For an offline demo, stop the collector with **Ctrl+C** after all scenarios finish. Leave SaaS up, wait about 56 seconds, and look for **Poor** and the heartbeat expiration reason. Restart the collector with the same runtime to see it recover. The benchmark window covers the last five minutes. Keep the dashboard visible while measuring, and run the producer, SaaS and browser on one machine for a shared clock.
+For an offline demo, wait for all scenarios to finish, then select **4** in the launcher to stop the collector. Wait about 56 seconds and look for **Poor** and the heartbeat expiration reason. Select **4** again to restart it. With manual startup, do the same by stopping and restarting only the collector terminal. The benchmark window covers the last five minutes. Keep the dashboard visible while measuring, and run the producer, SaaS and browser on one machine for a shared clock.
 
 ## 4. Run the automated checks for Phases 1–8
 

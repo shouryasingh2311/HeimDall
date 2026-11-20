@@ -232,6 +232,8 @@ monitor/
 
 ## Getting Started & Local Setup
 
+On Windows, double-click **Start-Heimdal.cmd** to build and start the live demo in one window. See the [judge runbook](docs/RUNBOOK.md#1-start-the-live-demo-on-windows) for the two sign-ins and scenario steps.
+
 ### Prerequisites
 * Python: 3.11 or newer.
 * Node.js: v22.12.0 or newer with `npm`.
