@@ -50,6 +50,7 @@ def test_organizer_adapter_parses_real_stream_and_tracks_unsupported(tmp_path: P
                 "timestamp": "2026-11-20T12:00:00.000Z",
                 "cpu": 45.2,
                 "memory": 60.1,
+                "disk": True,
                 "custom_organizer_tag": "experimental-tag",
             },
             {
@@ -71,7 +72,7 @@ def test_organizer_adapter_parses_real_stream_and_tracks_unsupported(tmp_path: P
         assert len(events) == 1
         assert events[0].input_id == "org-event-101"
         assert events[0].source_key == "tenant-alpha:web-01"
-        assert events[0].metrics["cpu_pct"] == 45.2
+        assert events[0].metrics == {"cpu_pct": 45.2, "memory_pct": 60.1}
 
         status = adapter.get_status()
         assert status["malformed_count"] == 1

@@ -97,17 +97,12 @@ class OrganizerAdapter:
             metrics_dict = raw_dict["metrics"]
         else:
             # Map top-level candidates
-            if "cpu" in raw_dict and isinstance(raw_dict["cpu"], (int, float)):
+            if type(raw_dict.get("cpu")) in (int, float):
                 metrics_dict["cpu_pct"] = float(raw_dict["cpu"])
-            if "memory" in raw_dict and isinstance(raw_dict["memory"], (int, float)):
+            if type(raw_dict.get("memory")) in (int, float):
                 metrics_dict["memory_pct"] = float(raw_dict["memory"])
-            if "disk" in raw_dict and isinstance(raw_dict["disk"], (int, float)):
+            if type(raw_dict.get("disk")) in (int, float):
                 metrics_dict["disk_used_pct"] = float(raw_dict["disk"])
-
-        # Default connectivity if valid metrics exist
-        if metrics_dict:
-            metrics_dict.setdefault("connectivity", True)
-            metrics_dict.setdefault("service_available", True)
 
         self.records_processed += 1
         return RawEvent(
