@@ -2,6 +2,7 @@
 
 import asyncio
 from collections import deque
+from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 from hashlib import sha256
 from hmac import compare_digest
@@ -81,12 +82,18 @@ class AuditPreview:
         self.purge()
         return [record for _, record in reversed(self.records)][:limit]
 
-    def by_id(self, payload_uuid: str):
+    def by_id(self, payload_uuid: str, approved_body: str | None = None):
         self.purge()
-        return next((record for _, record in reversed(self.records) if record["payload_uuid"] == payload_uuid), None)
+        return next((
+            record for _, record in reversed(self.records)
+            if record["payload_uuid"] == payload_uuid
+            and (approved_body is None or record["approved_body"] == approved_body)
+        ), None)
 
 
-def create_inspector(settings: CollectorSettings, audit: AuditPreview) -> FastAPI:
+def create_inspector(
+    settings: CollectorSettings, audit: AuditPreview, queue_status: Callable[[], Awaitable[dict]],
+) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_app):
         async def purge_periodically():
@@ -149,6 +156,6 @@ def create_inspector(settings: CollectorSettings, audit: AuditPreview) -> FastAP
     @app.get("/api/local/status")
     async def status(request: Request):
         check_token(request)
-        return {"retained_previews": len(audit.latest(500)), "buffering": "not_enabled"}
+        return {"retained_previews": len(audit.latest(500)), **await queue_status()}
 
     return app

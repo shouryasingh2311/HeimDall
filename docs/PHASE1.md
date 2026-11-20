@@ -18,6 +18,10 @@ Start the collector in another terminal.
 
 The collector labels its synthetic input DEMO_FALLBACK and reports approved metrics over verified HTTPS. Use --tenant beta in a third terminal for the second tenant. Use --once for a single batch and exit, --input for local RawEvent JSONL, or --organizer for an organizer-format JSONL replay. An explicitly missing or malformed input is a failed run. Organizer input sources must be configured on both tiers before ingest.
 
+The collector stores approved bodies in a SQLite outbox under the runtime directory. Keep that directory when restarting a collector. Run one collector per configured identity. The default capacity is 1,000 records and can be set with `outbox_capacity` in the collector JSON. An outage pauses inputs at capacity, without evicting committed records. Quarantined records also occupy capacity and are visible through the authenticated local status endpoint. `--once` allows 20 seconds for input and delivery, then exits unsuccessfully if it times out or quarantine remains. Committed records remain available for the next restart.
+
+To demonstrate recovery, stop SaaS for 30 seconds with the collector running, then restart SaaS with the same runtime. Use `/api/local/status` to observe queue depth and receipt counts. Verify delivery against central payload UUIDs. The automated integration test checks the exact UUID and body sets across a collector restart.
+
 Read the actual SaaS fleet using the generated operator credential. Keep the credential in the local process and out of reports.
 
     $operator = Get-Content -Raw .cicada/dev/operator-alpha.json | ConvertFrom-Json
@@ -41,4 +45,4 @@ For the privacy demo, start the alpha collector with --input tests/scenarios/fix
 
 Phase 1 tests exercise actual collector and SaaS processes with temporary certificates and databases. Set CICADA_TEST_DASHBOARD to a built dashboard directory to also verify the receipt renders in a browser. Set CICADA_TEST_BROWSER to msedge or use a Playwright-installed Chromium.
 
-V00 still needs an actual organizer sample. V02 covers the implemented collector/operator routes. Action and subscription checks apply once those capabilities exist. Phase 1 sends directly and reports delivery errors. The durable outbox is Phase 3, full health is Phase 4, and local auth aggregation is Phase 5.
+V00 still needs an actual organizer sample. V02 covers the implemented collector/operator routes. Action and subscription checks apply once those capabilities exist. Full health is Phase 4 and local auth aggregation is Phase 5.

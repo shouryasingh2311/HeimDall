@@ -10,7 +10,7 @@ The local collector exposes loopback-only HTTP endpoints bound to `127.0.0.1:900
 
 ### 1. GET `/api/local/status`
 
-Requires `Authorization: Bearer <local_token>`. Returns `retained_previews` (count) and `buffering` (`not_enabled` in Phase 2).
+Requires `Authorization: Bearer <local_token>`. Returns `retained_previews`, `buffering` (`enabled`), pending `queue_depth`, `capacity`, `backpressure`, `quarantine_count`, up to 20 `quarantine_items`, and `session_receipts` with accepted and duplicate counts since collector startup. Queue depth excludes quarantined records. Capacity includes them. A zero depth alone is not delivery evidence.
 
 ### 2. GET `/api/local/audit`
 

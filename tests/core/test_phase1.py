@@ -253,7 +253,10 @@ def test_event_order_and_pagination(service):
     config = settings(runtime, "alpha")
     sanitizer = Sanitizer(config)
     now = utc_now()
-    recent = sanitizer.metric(sample(config, "recent", utc_text(now)))
+    recent, tied = sorted(
+        (sanitizer.metric(sample(config, name, utc_text(now))) for name in ("recent", "tied")),
+        key=lambda payload: payload.payload_uuid,
+    )
     earlier = sanitizer.metric(sample(config, "earlier", utc_text(now - timedelta(seconds=1))))
     post = f"/api/v1/ingest/{config.region}"
     assert client.post(post, content=canonical_bytes(recent), headers=collector_headers(config)).status_code == 200
@@ -266,4 +269,8 @@ def test_event_order_and_pagination(service):
     following = client.get(read, params={"cursor": first["next_cursor"]}, headers=auth).json()
     assert following["items"][0]["payload_uuid"] == recent.payload_uuid
     assert following["next_cursor"] is None
+    assert client.get("/api/v1/fleet", headers=auth).json()["sources"][0]["payload_uuid"] == recent.payload_uuid
+
+    replay = client.post(post, content=canonical_bytes(tied), headers=collector_headers(config))
+    assert replay.json()["analysis_status"] == "historical"
     assert client.get("/api/v1/fleet", headers=auth).json()["sources"][0]["payload_uuid"] == recent.payload_uuid
