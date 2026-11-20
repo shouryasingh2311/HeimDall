@@ -1,6 +1,25 @@
-# Member 1 — lead using GPT-6 Astra
+# Member 1 — lead using GPT-6.2 Sol (high)
 
-Read PROJECT_OVERVIEW.md, ARCHITECTURE.md, CONTRACTS.md, TEAM_EXECUTION.md, GIT_WORKFLOW.md, VALIDATION.md and all eight phase plans. Branch feat/core-platform. You own the hard work and final integration; M2/M3 do not independently implement security or analytic policy.
+Read PROJECT_OVERVIEW.md, ARCHITECTURE.md, CONTRACTS.md, TEAM_EXECUTION.md, GIT_WORKFLOW.md, VALIDATION.md and all eight phase plans. Work on `feat/core-platform` with GPT-6.2 Sol and high reasoning. You own core implementation and final integration.
+
+## Before each work session
+
+Check `git status --short --branch`, then pull the current branch with `git pull --ff-only` once it tracks its remote. Sync reviewed `origin/main` into the feature branch using the [Git workflow](GIT_WORKFLOW.md). Inspect teammate status files and branch diffs before changing a shared interface. For example, `git diff --stat origin/main...origin/feat/operations-dashboard` shows dashboard changes awaiting integration. Safeguard any local edits before merging.
+
+## GSD commands
+
+Use the named skill in Codex as `$gsd-progress`, for example. Slash names are the GSD command equivalents.
+
+| Command | When to use it |
+|---|---|
+| `/gsd-progress` | Start here after pulling. Read STATE.md, teammate status, and the README phase links to pick the next Member 1 task. |
+| `/gsd-execute-phase N` | When ready to build, use the named phase plan and execute its Member 1 tasks inline. See the format note below. |
+| `/gsd-code-review N` | Review completed core changes for schema, authentication, tenant scope, and transaction errors before sharing. |
+| `/gsd-verify-work N` | Verify the phase against its V-checks in VALIDATION.md after implementation. Record observed results. |
+| `/gsd-quick <task>` | Handle a small fix or documentation change outside the phase sequence. |
+| `/gsd-debug <failure>` | Investigate a reproducible blocker, such as a failed HTTPS connection or duplicate ingest. |
+
+The existing Markdown phase plans describe team tasks. The GSD phase index finds Phase 1 but counts zero machine-readable tasks. For the next session, use `$gsd-progress` first. Then ask Codex to execute the Member 1 tasks in the linked phase plan inline, starting at Phase 1, and apply its acceptance checks. The automatic wave executor requires GSD-format tasks. The installed SDK also reports missing optional worker agents, so the inline path is ready without additional setup.
 
 ## Execution queue
 

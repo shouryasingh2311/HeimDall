@@ -2,9 +2,9 @@
 
 ## Current status
 
-Planning revision complete; application implementation has NOT started.
-Eight capability phases planned, 0/8 implemented, 0/14 acceptance checks executed.
-Repository initially contained documentation only. This revision changes documentation and planning metadata, not application code.
+Phase 1 and the dashboard were pulled from main at f9b8f7d. Phase 2 adds masked local previews, UUID lookup, and dashboard operator credentials and validates the separate-window digest comparison.
+
+See [Phase 1](phases/01-two-tier-core-architecture-secure-transport/01-01-SUMMARY.md) and [Phase 2](phases/02-local-privacy-pipeline-egress-proof-panel/02-01-SUMMARY.md) for measured results. V03 passed for the tested inputs. V00 is pending the official organizer input. Buffering, full health and remediation remain pending.
 
 ## Working constraints
 
@@ -12,9 +12,9 @@ Eight hours; three people. M1 owns heavy core work, M2 UI, M3 inputs/validation/
 
 | Gate | Target | Actual evidence |
 |---|---|---|
-| G0 | 0:30 | Pending team kickoff/organizer sample |
-| G1 | 2:00 | Not started |
-| G2 | 3:30 | Not started |
+| G0 | 0:30 | Phase 1 contracts exportable. Official organizer format pending. |
+| G1 | 2:00 | Live receipt rendered with operator credentials. V00 pending. |
+| G2 | 3:30 | Privacy evidence verified. Buffering and full health pending. |
 | G3 | 5:00 | Not started |
 | G4 | 5:45 | Not started |
 | G5 | 7:00 | Not started |
@@ -22,8 +22,14 @@ Eight hours; three people. M1 owns heavy core work, M2 UI, M3 inputs/validation/
 
 ## Dependencies and risks
 
-Organizer sample/schema/transport and final target values unconfirmed. Actual TLS/browser trust and dependency installation untested. M1 is the critical path; scope reductions in TEAM_EXECUTION.md apply. Regional hosting remains design-only. Teammate GitHub write access not checked.
+Organizer sample, schema, transport, and final target values are unconfirmed. Direct HTTPS browser use requires trusting the generated development CA. Region authorization is in place. Regional hosting remains design-only.
 
 ## Updating state during build
 
 M1 records accepted gate, integrated commit SHA, V-check evidence, remaining failures and limitations after each integration. Other members update their own status files. Never mark unknown/blocked checks passed.
+
+### Quick Tasks Completed
+
+| ID | Task | Date | Record |
+|---|---|---|---|
+| 261120-ru5 | Prepare Member 1 skills and refresh teammate status | 2026-11-20 | [Summary](quick/261120-ru5-member-1-gsd-setup/SUMMARY.md) |

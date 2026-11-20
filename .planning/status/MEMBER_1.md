@@ -1,12 +1,12 @@
 # Member 1 status
 
-Status: not started (planning revision only).
-Branch: feat/core-platform (planned, not created by this revision).
-Latest commit: pending implementation.
-Completed task/requirement IDs: none.
-Checks executed and observed results: none.
-Interface requests: none yet; read CONTRACTS.md at kickoff.
-Next: follow MEMBER_1_LEAD.md and G0.
-Blockers: organizer stream/format and dependency setup to confirm.
+Model: GPT-6.2 Sol with high reasoning.
+Status: Phase 2 V03 verified for the tested inputs. Official organizer input remains pending.
+Branch: feat/core-platform, synced with main at f9b8f7d.
+Delivered: Phase 1 architecture and Phase 2 privacy/proof paths. Geographic deployment remains a design item.
+Checks: 23 Python tests including the separate-window Edge check. Dashboard build and seven frontend checks passed.
+Interface: collector proof accepts an optional payload UUID. Dashboard connects with the generated tenant and operator token.
+Next: Phase 3 durable outbox and retry verification when authorized.
+Blocker: official organizer stream needed for V00.
 
 Update only this member's file every 30-45 minutes. Record evidence and commit SHA, not just activity. M1 alone updates integrated STATE.md.

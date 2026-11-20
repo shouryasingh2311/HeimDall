@@ -17,6 +17,8 @@ export const PayloadInspector: React.FC<PayloadInspectorProps> = ({ isFixtureMod
   const executeLookup = async (uuid: string) => {
     const targetUuid = uuid.trim();
     if (!targetUuid) return;
+    setLocalDigestInput('');
+    setPayload(null);
 
     if (isFixtureMode) {
       const match = MOCK_PAYLOADS_STORE[targetUuid];
@@ -57,7 +59,7 @@ export const PayloadInspector: React.FC<PayloadInspectorProps> = ({ isFixtureMod
   const normalizedLocalDigest = localDigestInput.trim().toLowerCase();
   const normalizedSaaSDigest = payload?.body_sha256.trim().toLowerCase();
   const hasComparison = normalizedLocalDigest.length > 0;
-  const isDigestMatch = hasComparison && normalizedLocalDigest === normalizedSaaSDigest;
+  const isDigestMatch = /^[a-f0-9]{64}$/.test(normalizedLocalDigest) && normalizedLocalDigest === normalizedSaaSDigest;
 
   return (
     <div className="section-block payload-inspector-section">
@@ -68,7 +70,7 @@ export const PayloadInspector: React.FC<PayloadInspectorProps> = ({ isFixtureMod
 
       {/* Two-Window Privacy Verification Protocol */}
       <div className="inspector-privacy-callout">
-        <div className="callout-title">Phase 2 Zero-Egress Privacy Verification Protocol (V03)</div>
+        <div className="callout-title">Compare local and SaaS records (V03)</div>
         <p className="privacy-intro">
           This SaaS view inspects only allow-listed, egressed metadata committed to central storage.
           Raw log lines, credentials, database passwords, and client IP addresses are dropped locally at the edge.
@@ -85,7 +87,7 @@ export const PayloadInspector: React.FC<PayloadInspectorProps> = ({ isFixtureMod
             <span className="step-num">Step 2:</span> Inspect the identical <code>payload_uuid</code> in this central window.
           </div>
           <div className="proc-step">
-            <span className="step-num">Step 3:</span> Compare the <code>body_sha256</code> digest below. Matching digests prove cryptographic byte-for-byte fidelity without a single byte of sensitive raw data leaking.
+            <span className="step-num">Step 3:</span> Compare the collector’s SHA-256 digest with the digest SaaS calculated on receipt.
           </div>
         </div>
       </div>
@@ -145,19 +147,13 @@ export const PayloadInspector: React.FC<PayloadInspectorProps> = ({ isFixtureMod
             <div className="matcher-input-row">
               <input
                 type="text"
+                aria-label="Local collector SHA-256 digest"
+                maxLength={64}
                 className="input-text mono text-sm"
                 placeholder="Paste local collector body SHA-256 digest..."
                 value={localDigestInput}
                 onChange={(e) => setLocalDigestInput(e.target.value)}
               />
-              <button
-                type="button"
-                className="action-btn"
-                onClick={() => setLocalDigestInput(payload.body_sha256)}
-                title="Auto-fill with currently inspected payload digest for demonstration"
-              >
-                Auto-fill Match
-              </button>
             </div>
 
             {hasComparison && (
@@ -165,7 +161,7 @@ export const PayloadInspector: React.FC<PayloadInspectorProps> = ({ isFixtureMod
                 {isDigestMatch ? (
                   <>
                     <span className="result-icon">&check;</span>
-                    <strong>DIGEST MATCH CONFIRMED:</strong> Application body SHA-256 matches canonical local bytes exactly. Zero payload corruption or tampering.
+                    <strong>{isFixtureMode ? 'SYNTHETIC DIGEST MATCH' : 'DIGEST MATCH CONFIRMED'}:</strong> Local and received body digests agree.
                   </>
                 ) : (
                   <>

@@ -44,7 +44,7 @@ class OrganizerAdapter:
             self.status_description = f"Ingesting confirmed organizer stream from {self.stream_path}"
         else:
             self.mode = self.MODE_FALLBACK
-            self.status_description = "Organizer stream unconfirmed/absent; running labelled deterministic fallback (Check V00 gap disclosed)."
+            self.status_description = "DEMO_FALLBACK: organizer stream unavailable; using deterministic demo data."
 
         self.unsupported_fields: List[str] = []
         self.malformed_count: int = 0
