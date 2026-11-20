@@ -2,9 +2,9 @@
 
 ## Current status
 
-Planning revision complete; application implementation has NOT started.
-Eight capability phases planned, 0/8 implemented, 0/14 acceptance checks executed.
-Repository initially contained documentation only. This revision changes documentation and planning metadata, not application code.
+Member 3's adapters, demo source, fixtures, local proof page, and verification runner are merged in `main` at `24925a6`. Member 2's dashboard and UI checks are on `origin/feat/operations-dashboard` at `1d90f88` and await integration. Member 1's core branch starts from the pulled `main`.
+
+Integrated phase gates remain pending. Teammate component checks are recorded in their status files. Organizer compatibility and live privacy/remediation checks still require end-to-end evidence.
 
 ## Working constraints
 
@@ -22,8 +22,14 @@ Eight hours; three people. M1 owns heavy core work, M2 UI, M3 inputs/validation/
 
 ## Dependencies and risks
 
-Organizer sample/schema/transport and final target values unconfirmed. Actual TLS/browser trust and dependency installation untested. M1 is the critical path; scope reductions in TEAM_EXECUTION.md apply. Regional hosting remains design-only. Teammate GitHub write access not checked.
+Organizer sample, schema, transport, and final target values are unconfirmed. End-to-end TLS and browser trust await integration. M1 is the critical path. Scope reductions in TEAM_EXECUTION.md apply. Regional hosting remains design-only.
 
 ## Updating state during build
 
 M1 records accepted gate, integrated commit SHA, V-check evidence, remaining failures and limitations after each integration. Other members update their own status files. Never mark unknown/blocked checks passed.
+
+### Quick Tasks Completed
+
+| ID | Task | Date | Record |
+|---|---|---|---|
+| 261120-ru5 | Prepare Member 1 skills and refresh teammate status | 2026-11-20 | [Summary](quick/261120-ru5-member-1-gsd-setup/SUMMARY.md) |

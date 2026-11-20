@@ -1,6 +1,6 @@
 # Team working agreement
 
-Read PROJECT_OVERVIEW.md and .planning/TEAM_EXECUTION.md before work. This repository currently contains plans only; implement application code only when the user requests the build.
+Read PROJECT_OVERVIEW.md and .planning/TEAM_EXECUTION.md before work. Start each work session by checking local changes and pulling before editing. Inspect teammate status and feature branches, then follow .planning/GIT_WORKFLOW.md. Implement application code when the user requests the build.
 
 Use the assigned member guide, owned paths and feature branch. M1 owns shared contracts, security, persistence, backend analytics and integration. M2 owns frontend. M3 owns adapters, pure demo source, local HTML, scenario fixtures/verification and runbook. Ask the lead to resolve interface conflicts rather than independently changing contracts. Do not spawn extra agents unless explicitly requested by the user.
 
