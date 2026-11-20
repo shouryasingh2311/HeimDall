@@ -38,9 +38,9 @@ COPY README.md ./
 # Copy compiled frontend distribution from Stage 1
 COPY --from=frontend-builder /build/frontend/dist ./frontend/dist
 
-# Copy container entrypoint script
+# Copy container entrypoint script, strip potential Windows CRLF endings, and ensure executable permissions
 COPY docker-entrypoint.sh ./
-RUN chmod +x docker-entrypoint.sh
+RUN sed -i 's/\r$//' docker-entrypoint.sh && chmod +x docker-entrypoint.sh
 
 # Ports:
 # 8443: Central SaaS API & HTTPS Dashboard
@@ -50,4 +50,4 @@ EXPOSE 8443 9001
 # Default persistent volume for runtime credentials, SQLite DBs, and certificates
 VOLUME ["/app/.heimdal"]
 
-ENTRYPOINT ["./docker-entrypoint.sh"]
+ENTRYPOINT ["/bin/bash", "/app/docker-entrypoint.sh"]
