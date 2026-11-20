@@ -14,7 +14,7 @@ Built for the CICADA 2026 hackathon.
 
 Heimdal is an AIOps observability platform designed to monitor distributed services without sending raw logs, credentials, or sensitive customer records across network boundaries.
 
-> Quick links: [Run Phase 1 locally](docs/PHASE1.md) · [Member 1 Lead](.planning/MEMBER_1_LEAD.md) · [Member 2 Dashboard](.planning/MEMBER_2_DASHBOARD.md) · [Member 3 Validation](.planning/MEMBER_3_VALIDATION.md) · [Contracts](.planning/CONTRACTS.md) · [Architecture](.planning/ARCHITECTURE.md)
+> Quick links: [Run the live demo](docs/RUNBOOK.md) · [Member 1 Lead](.planning/MEMBER_1_LEAD.md) · [Member 2 Dashboard](.planning/MEMBER_2_DASHBOARD.md) · [Member 3 Validation](.planning/MEMBER_3_VALIDATION.md) · [Contracts](.planning/CONTRACTS.md) · [Architecture](.planning/ARCHITECTURE.md)
 
 The system separates collection and central analysis into two tiers:
 1. Customer-local collector: Runs inside the customer environment. It filters, redacts, and aggregates telemetry locally. Raw logs, secrets, and customer data never leave this boundary. An SQLite outbox buffers records during outages, and a local loopback server displays the outbound payload and cryptographic digest.
@@ -49,7 +49,7 @@ The system enforces a clear boundary between local collection and central storag
 | Source Identifiers | Salted HMAC pseudonymization (`source_id = HMAC(source_name, secret)`). | Opaque pseudonym IDs only; mapping cannot be reversed. |
 | Security Events | Evaluates auth failures locally; produces aggregated threat summaries. | Receives failure counts, risk scores, and pseudonymous attacker IDs. |
 | Egress Inspection | Serves an inspection panel over loopback HTTP (`127.0.0.1:9001`). | Receives SHA-256 wire digest matching local outbound bytes. |
-| Network Security | Outbound TLS 1.3 to regional ingest endpoint with CA verification. | Multi-tenant storage scoped by tenant ID. |
+| Network Security | Verified HTTPS with CA and hostname checks to the assigned ingest route. | Multi-tenant storage scoped by tenant ID. |
 
 ```
 [ Customer Local Environment ]                        [ Central SaaS Boundary ]
@@ -119,7 +119,7 @@ Monitored sources and collectors are evaluated into one of four states:
 ### 5. Policy-Guarded Autonomous Ops Simulation
 * Remediation actions operate on pre-approved simulated targets (`SCALE_CONTAINER_MEMORY`).
 * State lifecycle progresses from `proposed` to `approved` (requires operator role), `executing`, and `succeeded`.
-* The collector records an in-memory snapshot before modifying target limits. Operators can trigger a rollback at any time to restore the original limit.
+* The collector persists the snapshot and simulated capacity change in SQLite. After the action succeeds, an operator can restore the original limit.
 
 ---
 
@@ -169,7 +169,7 @@ The test harness exercises all 8 evaluation scenarios:
 │  Pydantic v2 (Strict)  │  SQLite (aiosqlite WAL/FULL)  │
 │  Multi-Tenant RBAC  │  Rolling Z-Score Anomaly Engine  │
 └───────────────────────────┬────────────────────────────┘
-                            │ Mutual / Verified TLS
+                            │ Verified HTTPS + scoped token
 ┌───────────────────────────┴────────────────────────────┐
 │                    LOCAL COLLECTOR                     │
 │  Python 3.11+ Daemon  │  Local Regex Scrubbing Engine  │
@@ -232,14 +232,14 @@ monitor/
 
 ### Prerequisites
 * Python: 3.11 or newer.
-* Node.js: v18.0.0 or newer with `npm`.
+* Node.js: v22.12.0 or newer with `npm`.
 * Operating System: Windows, macOS, or Linux.
 
 ### 1. Environment Setup
 
 ```bash
 # Clone the repository
-git clone https://github.com/shouryasingh2311/HeimDall.git
+git clone https://github.com/shouryasingh2311/HeimDall.git monitor
 cd monitor
 
 # Backend setup (Python virtual environment)
@@ -253,9 +253,8 @@ source .venv/bin/activate
 pip install -r requirements.lock
 
 # Frontend setup
-cd frontend
-npm install
-cd ..
+npm --prefix frontend ci
+npm --prefix frontend run build
 ```
 
 ### 2. Bootstrap Local Certificates & Credentials
@@ -264,7 +263,7 @@ Heimdal enforces TLS and cryptographic tokens. Run the security bootstrap tool t
 python -m scripts.security.bootstrap
 ```
 This provisions:
-* CA root (`.heimdal/dev/ca.pem`) and server certificates (`saas.crt`, `saas.key`).
+* CA root (`.heimdal/dev/ca.pem`), server certificate (`server.pem`) and private key (`server.key`).
 * Tenant Alpha credentials: `.heimdal/dev/collector-alpha.json` and `.heimdal/dev/operator-alpha.json`.
 * Tenant Beta credentials: `.heimdal/dev/collector-beta.json` and `.heimdal/dev/operator-beta.json`.
 
@@ -276,7 +275,7 @@ python -m scripts.security.export_contracts
 ### 3. Running Central SaaS Service
 Start the central SaaS platform over HTTPS:
 ```bash
-python -m backend.saas.main
+python -m backend.saas.main --dashboard frontend/dist
 ```
 * SaaS API runs at: `https://localhost:8443`
 * Public health check: `https://localhost:8443/healthz`
@@ -296,30 +295,22 @@ python -m backend.collector.daemon
 * To ingest local JSONL logs: `python -m backend.collector.daemon --input path/to/events.jsonl`
 * Local Egress Proof Panel: Open `http://localhost:9001/audit` in your browser. Enter the `local_token` from `.heimdal/dev/collector-alpha.json` to inspect the raw input preview, sanitized outbound bytes, and matching SaaS receipt.
 
-### 5. Running the Operations Dashboard
-In a third terminal:
-```bash
-cd frontend
-npm run dev
-```
-* Dashboard UI: `http://localhost:5173`
-* Alternatively, build the static UI and let SaaS serve it directly:
-  ```bash
-  cd frontend && npm run build && cd ..
-  python -m backend.saas.main --dashboard frontend/dist
-  ```
+### 5. Opening the Operations Dashboard
+Open <https://localhost:8443> and enter the tenant ID and operator token from `.heimdal/dev/operator-alpha.json`. The [judge runbook](docs/RUNBOOK.md) covers browser CA trust, the scenario runner, and the full demo.
 
 ### 6. Running Validation Suite
 ```bash
 # Run core security, schema, and deduplication tests
 python -m pytest tests/core
 
-# Run all 8 hackathon scenario verifiers
+# Run the scenario fixtures and adapter checks
 python -m pytest tests/scenarios
 
 # Run UI verification checks
 node tests/ui/test-client.mjs
 ```
+
+For the browser enabled regression and the live eight scenario rehearsal, follow the [verification commands](docs/RUNBOOK.md#4-run-the-automated-checks-for-phases-18).
 
 ---
 
@@ -350,11 +341,9 @@ The project is structured for a 3-member parallel development workflow:
 ## Status and Limitations
 
 ### Current Status
-* Phases 1 through 4 are integrated on `main`. Phases 5 through 8 UI views are complete on the dashboard branch.
-* Gates G0 through G3 achieved.
+* All eight phases are integrated on `main`. The [Phase 8 evidence record](.planning/phases/08-unified-operations-dashboard-judge-verification-suite/08-01-SUMMARY.md) describes the synthetic demo rehearsal.
 * Runtime includes HTTPS SaaS, loopback Collector daemon, local HTML proof inspector, and React 19 / Vite dashboard.
-* Checks V01, V02, V03, V04, V05, V07, V08, V09, V10, V11 verified on synthetic test inputs.
-* Official organizer telemetry stream format remains pending; operating on verified demo fallback.
+* V00 remains blocked until the official organizer telemetry stream is verified.
 
 ### Scoped Boundaries
 * Single-process SQLite: Uses SQLite WAL/FULL for local durability without multi-container operational overhead.
