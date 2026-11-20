@@ -289,9 +289,9 @@ def main():
             status_str = f"[{r['status']}]"
             print(f"{status_str:10} {r['check_id']}: {r['name']}")
             if r["status"] == "BLOCKED":
-                print(f"           └─ {r['reason']}")
+                print(f"           |-- {r['reason']}")
             elif "detail" in r:
-                print(f"           └─ {r['detail']}")
+                print(f"           |-- {r['detail']}")
 
 
 if __name__ == "__main__":
