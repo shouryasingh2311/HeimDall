@@ -6,6 +6,7 @@ from time import time
 
 import aiosqlite
 
+from backend.collector.security_analyzer import SCHEMA as AUTH_SCHEMA
 from backend.shared.models import MetadataPayload
 
 SCHEMA = """
@@ -24,20 +25,22 @@ WHERE quarantine_reason IS NULL;
 
 
 class Outbox:
-    def __init__(self, db: aiosqlite.Connection, capacity: int):
+    def __init__(self, db: aiosqlite.Connection, security_db: aiosqlite.Connection, capacity: int):
         self.db = db
+        self.security_db = security_db
         self.capacity = capacity
 
     @classmethod
     @asynccontextmanager
     async def open(cls, path: Path, capacity: int):
         # Autocommit makes each single-statement transition atomic.
-        async with aiosqlite.connect(path, isolation_level=None) as db:
+        async with aiosqlite.connect(path, isolation_level=None) as db, aiosqlite.connect(path) as security_db:
             db.row_factory = aiosqlite.Row
             await db.execute("PRAGMA journal_mode=WAL")
             await db.execute("PRAGMA synchronous=FULL")
-            await db.executescript(SCHEMA)
-            yield cls(db, capacity)
+            await db.executescript(SCHEMA + AUTH_SCHEMA)
+            await security_db.execute("PRAGMA synchronous=FULL")
+            yield cls(db, security_db, capacity)
 
     async def enqueue(self, payload: MetadataPayload, body: bytes) -> str | None:
         key = (payload.payload_uuid, body)

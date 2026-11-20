@@ -21,6 +21,7 @@ import uvicorn
 from backend.saas.auth import Authenticator
 from backend.saas import benchmark
 from backend.saas.health import HealthMonitor
+from backend.saas.incidents import IncidentEngine
 from backend.saas.storage import PayloadConflict, Storage
 from backend.shared.config import Credential, ServerSettings, read_settings
 from backend.shared.models import (
@@ -90,6 +91,8 @@ def create_app(settings: ServerSettings, db_path: Path, dashboard: Path | None =
             app.state.storage = storage
             app.state.monitor = HealthMonitor(storage, settings.health, sources_by_tenant)
             storage.on_change = app.state.monitor.refresh_locked
+            app.state.incidents = IncidentEngine(storage, settings)
+            storage.analyze = app.state.incidents.analyze_locked
             watchdog = asyncio.create_task(app.state.monitor.watch())
             try:
                 yield
@@ -216,6 +219,21 @@ def create_app(settings: ServerSettings, db_path: Path, dashboard: Path | None =
         if result is None:
             raise HTTPException(404, "Payload not found")
         return {"accepted": True, "first_recorded": result}
+
+    @app.get("/api/v1/incidents")
+    async def incidents(
+        request: Request, credential: Credential = Depends(operator),
+        cursor: Annotated[int, Query(ge=1, le=2**63 - 1)] = 2**63 - 1,
+        limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    ):
+        return await request.app.state.incidents.list(credential.tenant_id, cursor, limit)
+
+    @app.get("/api/v1/incidents/{incident_id}")
+    async def incident_detail(incident_id: UuidString, request: Request, credential: Credential = Depends(operator)):
+        detail = await request.app.state.incidents.detail(credential.tenant_id, incident_id)
+        if detail is None:
+            raise HTTPException(404, "Incident not found")
+        return detail
 
     @app.get("/api/v1/benchmarks")
     async def benchmarks(

@@ -74,12 +74,19 @@ def bootstrap(runtime: Path, saas_port=8443, local_base=9001):
     runtime.mkdir(mode=0o700, parents=True)
     issue_certificates(runtime)
     credentials = []
+    dependencies = {}
     for offset, region in enumerate(("us-east-1", "eu-west-1")):
         label = ("alpha", "beta")[offset]
         tenant, collector = f"tenant-{label}", f"collector-{label}-1"
         token, operator, local_token = (secrets.token_urlsafe(32) for _ in range(3))
         key = secrets.token_hex(32)
         sources = [f"{tenant}:{spec.node_id}" for spec in DemoSource.NODE_SPECS]
+        dependencies[tenant] = {
+            pseudonym(key, f"{tenant}:{spec.node_id}"): [
+                pseudonym(key, f"{tenant}:{dependency}") for dependency in spec.depends_on
+            ]
+            for spec in DemoSource.NODE_SPECS
+        }
         write_json(runtime / f"collector-{label}.json", {
             "tenant_id": tenant, "collector_id": collector, "region": region, "token": token,
             "hmac_key": key, "local_token": local_token, "source_keys": sources,
@@ -93,7 +100,9 @@ def bootstrap(runtime: Path, saas_port=8443, local_base=9001):
             {"role": "operator", "tenant_id": tenant, "region": region,
              "token_sha256": hashlib.sha256(operator.encode()).hexdigest()},
         ])
-    write_json(runtime / "saas.json", {"credentials": credentials, "dev_origin": "http://localhost:5173"})
+    write_json(runtime / "saas.json", {
+        "credentials": credentials, "dev_origin": "http://localhost:5173", "dependencies": dependencies,
+    })
 
 
 def main():

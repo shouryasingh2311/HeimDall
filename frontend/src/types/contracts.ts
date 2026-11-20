@@ -196,6 +196,7 @@ export interface BenchmarkSummary {
   replay_or_delayed: TimingCohort;
   all: TimingCohort;
   alert_delay_ms: number | null;
+  alert_timing: { samples: number; clock_flagged: number };
   offline: { collector_id: string; delay_ms: number }[];
 }
 

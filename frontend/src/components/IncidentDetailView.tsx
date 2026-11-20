@@ -332,6 +332,7 @@ export const IncidentDetailView: React.FC<IncidentDetailViewProps> = ({
                         <th scope="col">Observed</th>
                         <th scope="col">Baseline Mean</th>
                         <th scope="col">Baseline Std</th>
+                        <th scope="col">Comparison</th>
                         <th scope="col">Z-Score</th>
                         <th scope="col">Event Time (UTC)</th>
                         <th scope="col">Payload UUID</th>
@@ -344,8 +345,16 @@ export const IncidentDetailView: React.FC<IncidentDetailViewProps> = ({
                           <td>{sig.observed.toFixed(1)}</td>
                           <td>{sig.baseline_mean !== null ? sig.baseline_mean.toFixed(1) : '—'}</td>
                           <td>{sig.baseline_std !== null ? sig.baseline_std.toFixed(1) : '—'}</td>
+                          <td>{sig.baseline_mean === null ? '—' : (
+                            <div className="signal-comparison">
+                              <meter aria-label={`${sig.metric} observed`} value={sig.observed}
+                                max={Math.max(sig.observed, sig.baseline_mean, 1)} />
+                              <meter aria-label={`${sig.metric} baseline mean`} value={sig.baseline_mean}
+                                max={Math.max(sig.observed, sig.baseline_mean, 1)} />
+                            </div>
+                          )}</td>
                           <td className="mono font-semibold text-alert">
-                            {sig.z_score !== null ? `+${sig.z_score.toFixed(2)}` : '—'}
+                            {sig.z_score !== null ? `${sig.z_score > 0 ? '+' : ''}${sig.z_score.toFixed(2)}` : '—'}
                           </td>
                           <td className="mono text-xs">
                             {new Date(sig.event_time_utc).toISOString().replace('T', ' ').replace('Z', '')}

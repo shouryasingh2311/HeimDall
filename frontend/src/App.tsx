@@ -187,6 +187,7 @@ function Dashboard({ onCredentialsChanged }: { onCredentialsChanged: () => void 
             className="tab-pane"
           >
             <IncidentDetailView
+              key={String(isFixtureMode)}
               isFixtureMode={isFixtureMode}
               initialIncidentId={targetIncidentId}
               onInspectPayload={handleInspectPayload}

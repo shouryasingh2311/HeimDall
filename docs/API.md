@@ -216,20 +216,22 @@ Returns health state changes newest first, with UTC observation timestamps and r
 Lists active and resolved incidents for the authenticated tenant.
 
 * **Auth:** Bearer Token (Role: `operator`)
+* **Query Parameters:** `cursor` (use the previous `next_cursor`), `limit` (1–200, default 50)
 * **Response Body (`200 OK`):**
   ```json
   {
-    "incidents": [
+    "items": [
       {
-        "incident_id": "inc-20261120-01",
-        "title": "Correlated Memory & Latency Spike",
-        "severity": "critical",
+        "incident_id": "67aa850c-22d3-4c63-aeb2-60cbc68eb54b",
+        "template_title": "Infrastructure anomaly",
+        "severity": "warning",
         "status": "open",
-        "evidence_score": 88,
+        "evidence_score": 30,
         "created_at_utc": "2026-11-20T14:25:00Z",
-        "source_ids": ["node-app-01", "node-db-01"]
+        "source_ids": ["src-14dc2d2f7dd0e59e7342dcf858246b98"]
       }
-    ]
+    ],
+    "next_cursor": null
   }
   ```
 
@@ -242,17 +244,20 @@ Returns granular explanation and contributing signals for a specific incident.
 * **Response Body (`200 OK`):**
   ```json
   {
-    "incident_id": "inc-20261120-01",
-    "title": "Correlated Memory & Latency Spike",
-    "severity": "critical",
+    "incident_id": "67aa850c-22d3-4c63-aeb2-60cbc68eb54b",
+    "template_title": "Infrastructure anomaly",
+    "severity": "warning",
     "status": "open",
-    "likely_cause": "Memory exhaustion on node-app-01 cascading to db query timeout",
-    "evidence_score": 88,
-    "score_method": "z_score_composite_v1",
+    "created_at_utc": "2026-11-20T14:25:00Z",
+    "source_ids": ["src-14dc2d2f7dd0e59e7342dcf858246b98"],
+    "alert_ids": ["544052a8-57e9-4742-b7be-044e06412a15"],
+    "likely_cause": "The flagged metrics identify where to investigate. No upstream cause is established by the observed signals.",
+    "evidence_score": 30,
+    "score_method": "Heuristic: min(100, 30 × min(distinct metrics, 2) + 20 × configured dependency + 20 × temporal order)",
     "contributing_signals": [
       {
         "payload_uuid": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
-        "source_id": "node-app-01",
+        "source_id": "src-14dc2d2f7dd0e59e7342dcf858246b98",
         "metric": "memory_pct",
         "observed": 94.2,
         "baseline_mean": 62.1,
@@ -261,8 +266,9 @@ Returns granular explanation and contributing signals for a specific incident.
         "event_time_utc": "2026-11-20T14:24:50Z"
       }
     ],
-    "recommended_action": "SCALE_CONTAINER_MEMORY",
-    "proposal_status": "proposed"
+    "reasoning_steps": ["1 persisted alert signals from 1 monitored sources.", "Score inputs: 1 distinct metrics, dependency=0, temporal order=0."],
+    "recommended_action": "Inspect the flagged metrics and compare the affected services with their dependencies.",
+    "proposal_status": "none"
   }
   ```
 
@@ -329,4 +335,4 @@ Registers client-side first visible render timing for latency evaluation (`V10`)
 
 #### GET `/api/v1/benchmarks`
 
-Operator only. Accepts `run_id` (default `default-run`) and an optional `session_id`. The five-minute window uses the SaaS receive time of approved payloads. It reports `live`, `replay_or_delayed`, and `all` cohorts with eligible, missing, clock-flagged, and valid counts and nearest-rank p50/p95 in milliseconds. Historical records and records received at least 10 seconds after event time are in the replay or delayed cohort. The response also includes measured offline observations. `alert_delay_ms` is null pending Phase 5.
+Operator only. Accepts `run_id` (default `default-run`) and an optional `session_id`. The five-minute window uses the SaaS receive time of approved payloads. It reports `live`, `replay_or_delayed`, and `all` cohorts with eligible, missing, clock-flagged, and valid counts and nearest-rank p50/p95 in milliseconds. Historical records and records received at least 10 seconds after event time are in the replay or delayed cohort. The response also includes measured offline observations. `alert_delay_ms` is the p95 from breach event time to the creation time recorded by the alert's committed transaction. `alert_timing` reports valid and clock-flagged counts for the tenant, across dashboard sessions in the window.

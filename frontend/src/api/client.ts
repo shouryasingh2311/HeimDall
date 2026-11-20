@@ -211,7 +211,10 @@ export class CicadaApiClient {
   }
 
   public async getIncidents(): Promise<IncidentSummary[]> {
-    return this.request<IncidentSummary[]>('/api/v1/incidents', { method: 'GET' }, 'incidents');
+    const page = await this.request<{ items: IncidentSummary[]; next_cursor: string | null }>(
+      '/api/v1/incidents', { method: 'GET' }, 'incidents',
+    );
+    return page.items;
   }
 
   public async getIncident(id: string): Promise<IncidentDetail> {

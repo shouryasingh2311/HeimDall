@@ -87,15 +87,22 @@ async def summary(storage, tenant: str, run_id: str, session_id: str | None):
             """SELECT collector_id, observed_at, heartbeat_at FROM offline_observation
                WHERE tenant_id=? AND observed_at>=? ORDER BY observed_at DESC LIMIT 20""", (tenant, since),
         )
+        alerts = await storage.db.execute_fetchall(
+            "SELECT breach_at, created_at FROM alert WHERE tenant_id=? AND created_at>=?",
+            (tenant, since),
+        )
     live, replay = [], []
     for event, received, rendered, posted, status in rows:
         bucket = replay if status == "historical" or (parse_utc(received) - parse_utc(event)).total_seconds() >= 10 else live
         bucket.append((event, received, rendered, posted))
+    delays = [(parse_utc(row["created_at"]) - parse_utc(row["breach_at"])).total_seconds() * 1000 for row in alerts]
+    valid_delays = sorted(delay for delay in delays if delay >= 0)
     return {
         "run_id": run_id, "session_id": session_id, "window_seconds": 300,
         "clock_uncertainty": "Browser and producer clocks are not independently synchronized.",
         "live": cohort_summary(live), "replay_or_delayed": cohort_summary(replay), "all": cohort_summary(live + replay),
-        "alert_delay_ms": None,
+        "alert_delay_ms": round(valid_delays[ceil(len(valid_delays) * .95) - 1], 2) if valid_delays else None,
+        "alert_timing": {"samples": len(valid_delays), "clock_flagged": len(delays) - len(valid_delays)},
         "offline": [{
             "collector_id": row["collector_id"], "observed_at_utc": row["observed_at"],
             "last_heartbeat_utc": row["heartbeat_at"],

@@ -12,6 +12,7 @@ import aiosqlite
 
 from backend.saas.health import SCHEMA as HEALTH_SCHEMA
 from backend.saas.benchmark import SCHEMA as BENCHMARK_SCHEMA
+from backend.saas.incidents import SCHEMA as INCIDENT_SCHEMA
 
 from backend.shared.models import (
     CollectorHeartbeat, IngestReceipt, MetadataPayload, PayloadDetail, canonical_bytes,
@@ -64,6 +65,7 @@ class Storage:
         self.db = db
         self.lock = asyncio.Lock()
         self.on_change: Callable[[str], Awaitable[dict]] | None = None
+        self.analyze: Callable[[MetadataPayload, str], Awaitable[str]] | None = None
 
     @classmethod
     @asynccontextmanager
@@ -74,7 +76,7 @@ class Storage:
             await db.execute("PRAGMA journal_mode=WAL")
             await db.execute("PRAGMA synchronous=FULL")
             await db.execute("PRAGMA foreign_keys=ON")
-            await db.executescript(SCHEMA + HEALTH_SCHEMA + BENCHMARK_SCHEMA)
+            await db.executescript(SCHEMA + HEALTH_SCHEMA + BENCHMARK_SCHEMA + INCIDENT_SCHEMA)
             yield cls(db)
 
     @asynccontextmanager
@@ -115,7 +117,8 @@ class Storage:
             newest = latest[0]["latest"]
             analysis_status = (
                 "historical"
-                if (newest is not None and event_time <= newest)
+                if (newest is not None and (event_time < newest or
+                    (event_time == newest and payload.event_type == "metric")))
                 or now - parse_utc(payload.event_time_utc) >= timedelta(seconds=30)
                 else "warming_up"
             )
@@ -126,6 +129,12 @@ class Storage:
                 (*identity, payload.source_id, event_time, received_at, digest,
                  canonical_bytes(payload), payload.event_type, analysis_status),
             )
+            if analysis_status != "historical" and self.analyze:
+                analysis_status = await self.analyze(payload, event_time)
+                await self.db.execute(
+                    "UPDATE metadata SET analysis_status=? WHERE tenant_id=? AND payload_uuid=?",
+                    (analysis_status, *identity),
+                )
             if self.on_change:
                 await self.on_change(payload.tenant_id)
             return IngestReceipt(
