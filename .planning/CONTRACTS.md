@@ -1,6 +1,6 @@
 # Shared contracts v1
 
-Owner M1. Freeze before parallel implementation. M2/M3 propose interface changes through their status files; never rename independently. M1 generates Pydantic/OpenAPI definitions and metadata-only fixtures at the first checkpoint. This document specifies future code, not existing implementation.
+Owner M1. Freeze before parallel implementation. M2/M3 propose interface changes through their status files; never rename independently. M1 generates Pydantic/OpenAPI definitions and metadata-only fixtures at the first checkpoint. Scope: planned v1 interface specifications.
 
 ## Local-only input
 
@@ -28,7 +28,7 @@ All models forbid extras, including nested models. No unrestricted metric dictio
 | security | typed SecuritySummary for auth_threat, otherwise null |
 | severity | info/warning/critical, from rule/config |
 
-Metrics: cpu_pct, memory_pct, disk_used_pct (0..100); disk_read_bps, disk_write_bps, net_tx_bps, net_rx_bps, latency_ms (>=0); packet_loss_pct (0..100); service_available, connectivity (boolean). Null means explicitly unavailable, never zero. At least one valid metric required; configured expected signals determine missing-data handling.
+Metrics: cpu_pct, memory_pct, disk_used_pct (0..100); disk_read_bps, disk_write_bps, net_tx_bps, net_rx_bps, latency_ms (>=0); packet_loss_pct (0..100); service_available, connectivity (boolean). Null indicates an unavailable metric; zero is reserved for measured zero values. At least one valid metric required; configured expected signals determine missing-data handling.
 SecuritySummary: failed_attempts_count >=5, window_seconds=10, risk_score 0..100, attacker_id pseudonym. No original IP, credentials, SQL, PID or raw authentication context.
 
 CollectorHeartbeat: schema_version, tenant_id, collector_id, region, heartbeat_uuid, generated_at_utc, source_timezone, version (bounded config string), rss_mb, cpu_pct, queue_depth, config_status (valid/invalid). Server owns received_at. Heartbeats are not replayed from the telemetry outbox. Reject duplicate UUID for liveness refresh, age >15s or future >5s. Source membership is separate configured data.
@@ -83,6 +83,6 @@ ScenarioResult: run_id, scenario_id, status (running/passed/failed/blocked), sta
 
 ## UI and timing
 
-M2 uses one API wrapper, 2s polling, cancelled overlapping requests and honest disconnected/stale state. Capture first visible rendering of each payload ID after React commit/frame scheduling; submit run_id/session_id/payload_uuid/rendered_at_utc once. Do not measure fetch completion or every poll. Label browser timing resolution and clock uncertainty. M1 checks referenced IDs belong to operator tenant. This is instrumentation, not cryptographic proof.
+M2 uses one API wrapper, 2s polling, cancelled overlapping requests and honest disconnected/stale state. Capture first visible rendering of each payload ID after React commit/frame scheduling; submit run_id/session_id/payload_uuid/rendered_at_utc once. Do not measure fetch completion or every poll. Label browser timing resolution and clock uncertainty. M1 checks referenced IDs belong to operator tenant. This records browser render timing and does not produce cryptographic proofs.
 
 Metadata-only fixtures require permanent MOCK banner. API errors never silently substitute fixture data. Tenant credential change clears cached data/render keys. Live acceptance uses real API only.

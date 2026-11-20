@@ -1,51 +1,49 @@
-# Cicada — Privacy-First Observability & AIOps Platform
+# Cicada: Privacy-Preserving Observability and AIOps Platform
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python: 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![React: 18](https://img.shields.io/badge/react-18-cyan.svg)](https://react.dev/)
+[![React: 19](https://img.shields.io/badge/react-19-cyan.svg)](https://react.dev/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-green.svg)](https://fastapi.tiangolo.com/)
 [![SQLite: WAL](https://img.shields.io/badge/SQLite-WAL%20%7C%20FULL-lightgrey.svg)](https://sqlite.org/)
 
-**Cicada** is an end-to-end, privacy-first AIOps observability platform built for enterprise, cloud, data center, and distributed architectures. Designed according to the [Cicada 2026 Hackathon Specification](file:///c:/Users/Safa%20Asmi/Documents/GitHub/monitor/evaluation_guide_extracted.txt), it solves the core observability dilemma: **delivering centralized operational intelligence without transmitting raw logs, credentials, or sensitive customer records across network boundaries.**
+Cicada is an AIOps observability platform designed to monitor distributed services without sending raw logs, credentials, or sensitive customer records across network boundaries.
 
-> **Quick Links:** [Run Phase 1 locally](docs/PHASE1.md) · [Member 1 Lead](.planning/MEMBER_1_LEAD.md) · [Member 2 Dashboard](.planning/MEMBER_2_DASHBOARD.md) · [Member 3 Validation](.planning/MEMBER_3_VALIDATION.md) · [Contracts](.planning/CONTRACTS.md) · [Architecture](.planning/ARCHITECTURE.md)
+> Quick links: [Run Phase 1 locally](docs/PHASE1.md) · [Member 1 Lead](.planning/MEMBER_1_LEAD.md) · [Member 2 Dashboard](.planning/MEMBER_2_DASHBOARD.md) · [Member 3 Validation](.planning/MEMBER_3_VALIDATION.md) · [Contracts](.planning/CONTRACTS.md) · [Architecture](.planning/ARCHITECTURE.md)
 
-Cicada deploys a strict **Two-Tier Architecture**:
-1. **Tier 1 — Customer-Local Collector:** Runs inside the customer environment. It filters, redacts, sanitizes, and aggregates telemetry locally. Raw logs, secrets, and customer data never leave this boundary. It maintains a durable, crash-resilient local outbox (SQLite WAL/FULL) and surfaces an Egress Proof Panel via loopback HTTP.
-2. **Tier 2 — Central SaaS Platform:** An authenticated, multi-tenant central analytics service. It ingests allow-listed metadata only, tracks fleet health (Four States: *Excellent, Good, Fair, Poor*), detects statistical anomalies with transparent evidence scoring, correlates related alerts into unified incidents, and supports policy-governed operator remediation.
+The system separates collection and central analysis into two tiers:
+1. Customer-local collector: Runs inside the customer environment. It filters, redacts, and aggregates telemetry locally. Raw logs, secrets, and customer data never leave this boundary. An SQLite outbox buffers records during outages, and a local loopback server displays the outbound payload and cryptographic digest.
+2. Central SaaS platform: An authenticated, multi-tenant analytics service. It ingests allow-listed metadata only, tracks fleet health across four states (Excellent, Good, Fair, Poor), detects statistical anomalies with heuristic evidence scoring, correlates related alerts into incidents, and supports operator-approved remediation.
 
 ---
 
 ## Table of Contents
 
-- [Core Principles & Trust Boundary](#core-principles--trust-boundary)
+- [Trust Boundary](#trust-boundary)
 - [Key Features](#key-features)
 - [System Architecture](#system-architecture)
-- [Performance & Reliability Targets](#performance--reliability-targets)
+- [Performance Targets](#performance-targets)
 - [8 Live Hackathon Scenarios](#8-live-hackathon-scenarios)
 - [Technology Stack](#technology-stack)
 - [Repository Structure](#repository-structure)
 - [Getting Started & Local Setup](#getting-started--local-setup)
 - [Documentation Index](#documentation-index)
-- [Team Roles & Execution Model](#team-roles--execution-model)
-- [Status & Limitations](#status--limitations)
+- [Team Roles](#team-roles)
+- [Status and Limitations](#status-and-limitations)
 
 ---
 
-## Core Principles & Trust Boundary
+## Trust Boundary
 
-Traditional monitoring platforms demand that raw application logs, network traces, and syslog streams be continuously forwarded to a central cloud. This introduces severe attack surfaces, compliance liabilities (GDPR, HIPAA, SOC 2), and high bandwidth overhead.
-
-Cicada enforces a zero-compromise trust boundary:
+The system enforces a clear boundary between local collection and central storage:
 
 | Boundary Domain | Tier 1: Customer Local Collector | Tier 2: Central SaaS Platform |
 |---|---|---|
-| **Raw Logs & Payloads** | Stored locally (bounded ring buffer; default 500 records / 15 mins). | **Zero transmission.** Strictly dropped by local policy. |
-| **Passwords & API Keys** | Scrubbed via regex catalog and strict nested schema allow-lists. | Never received; invalid schemas rejected with `422`. |
-| **Source Identifiers** | Salted HMAC pseudonymization (`source_id = HMAC(source_name, secret)`). | Sees only opaque pseudonym IDs; cannot reverse mapping. |
-| **Security Events** | Evaluates auth failures locally; produces aggregated threat summaries. | Receives failure counts, risk score, and pseudonymous attacker ID only. |
-| **Egress Inspection** | Serves an **Egress Proof Panel** over loopback HTTP (`127.0.0.1:9001/9002`). | Receives SHA-256 wire-digest matching local outbound bytes. |
-| **Network Security** | Initiates outbound TLS 1.3 to regional ingest endpoint; verified CA/SAN. | Multi-tenant isolated storage; enforces tenant scope on all operations. |
+| Raw Logs and Payloads | Stored locally in a bounded ring buffer (500 records or 15 minutes). | Not transmitted. Dropped by local policy. |
+| Passwords and API Keys | Scrubbed with regex patterns and strict schema allow-lists. | Rejected if present with HTTP 422. |
+| Source Identifiers | Salted HMAC pseudonymization (`source_id = HMAC(source_name, secret)`). | Opaque pseudonym IDs only; mapping cannot be reversed. |
+| Security Events | Evaluates auth failures locally; produces aggregated threat summaries. | Receives failure counts, risk scores, and pseudonymous attacker IDs. |
+| Egress Inspection | Serves an inspection panel over loopback HTTP (`127.0.0.1:9001`). | Receives SHA-256 wire digest matching local outbound bytes. |
+| Network Security | Outbound TLS 1.3 to regional ingest endpoint with CA verification. | Multi-tenant storage scoped by tenant ID. |
 
 ```
 [ Customer Local Environment ]                        [ Central SaaS Boundary ]
@@ -78,7 +76,7 @@ Cicada enforces a zero-compromise trust boundary:
 │                            │                        │               ▼               │
 │                            │                        │ ┌───────────────────────────┐ │
 │                            │                        │ │ Operations Dashboard      │ │
-│                            │                        │ │ (React 18 + Vite)         │ │
+│                            │                        │ │ (React 19 + Vite)         │ │
 │                            │                        │ └───────────────────────────┘ │
 └────────────────────────────┘                        └───────────────────────────────┘
 ```
@@ -88,64 +86,64 @@ Cicada enforces a zero-compromise trust boundary:
 ## Key Features
 
 ### 1. Privacy-Preserving Metadata Pipeline & Egress Proof Panel
-* **Strict Nested Model Allow-Listing:** Implements Pydantic v2 models forbidding extra keys (`extra="forbid"`). Only typed metrics (`cpu_pct`, `memory_pct`, `disk_used_pct`, `disk_read_bps`, `disk_write_bps`, `net_tx_bps`, `net_rx_bps`, `latency_ms`, `packet_loss_pct`, `service_available`, `connectivity`) are permitted.
-* **Local Regex Sanitizer:** High-speed regex engine catches API tokens, JWTs, AWS credentials, Bearer tokens, and connection strings before serialization.
-* **Loopback Proof Inspector:** Operators can open a local browser window to view side-by-side comparisons of raw unredacted input versus the exact outbound JSON wire bytes.
-* **Deterministic SHA-256 Wire Receipts:** The collector records the exact canonical serialized bytes and their SHA-256 digest. The SaaS ingest endpoint calculates the digest upon arrival and returns an `IngestReceipt`. Both sides must match bit-for-bit.
+* Pydantic v2 models forbid extra keys (`extra="forbid"`). Allowed numeric fields include `cpu_pct`, `memory_pct`, `disk_used_pct`, `disk_read_bps`, `disk_write_bps`, `net_tx_bps`, `net_rx_bps`, `latency_ms`, `packet_loss_pct`, `service_available`, and `connectivity`.
+* A local regex catalog filters API tokens, JWTs, AWS keys, Bearer tokens, and connection strings prior to serialization.
+* Operators can open a local loopback window (`http://localhost:9001/audit`) to review raw input alongside exact outbound JSON wire bytes.
+* The collector saves canonical serialized bytes and computes their SHA-256 digest. The SaaS ingest endpoint computes the digest upon receipt and returns an `IngestReceipt`. Both digests must match bit for bit.
 
 ### 2. Resilient Offline Buffering & Transactional Deduplication
-* **Persist-Before-Send Outbox:** Every event is committed to a local SQLite outbox database before network transmission begins.
-* **Durable Fault Tolerance:** Configured with `PRAGMA synchronous = FULL` and WAL mode to prevent data corruption during sudden power losses or OS crashes.
-* **Smart Backoff & Reconnect:** Exponential backoff with jitter (`1s`, `2s`, `4s`, `8s`) during SaaS outages. Heartbeats run on an independent thread and never block behind backlog draining.
-* **Idempotent Ingestion:** Every event carries a deterministic `payload_uuid` (UUIDv5 derived from tenant, collector, source, input ID, and kind). The SaaS database enforces a `UNIQUE(tenant_id, payload_uuid)` constraint. Replays return the original receipt without double-counting metrics, alerts, or incident side-effects.
+* Events commit to an SQLite outbox database before network transmission begins.
+* The database uses `PRAGMA synchronous = FULL` and WAL mode to prevent corruption across sudden restarts.
+* Exponential backoff with jitter (`1s`, `2s`, `4s`, `8s`) governs retries during SaaS outages. Collector heartbeats run on an independent loop and do not block behind telemetry backlogs.
+* Every payload carries a deterministic `payload_uuid` (UUIDv5). The SaaS database enforces a `UNIQUE(tenant_id, payload_uuid)` constraint; replayed records return the original receipt without double-counting metrics or re-triggering incidents.
 
 ### 3. Four-State Operational Health Engine
-Monitored systems and collectors are evaluated every 2 seconds into one of four distinct states:
-* 🟢 **Excellent (Healthy):** All metrics reporting normally within historical baselines.
-* 🟡 **Good (Normal):** Minor metric drift without operational impact.
-* 🟠 **Fair (Needs Attention):** Elevated latency, packet loss, or recurring warnings.
-* 🔴 **Poor (Critical):** Collector offline (>60s heartbeat loss), severe resource exhaustion, or security breach.
-* **Staleness Handling:** Late or replayed events cannot falsely refresh live health state. Health transitions are timestamped in UTC and stored with machine-readable reason codes.
+Monitored sources and collectors are evaluated into one of four states:
+* Excellent: All metrics report within expected baseline boundaries.
+* Good: Minor metric drift without operational failure.
+* Fair: Elevated latency, packet loss, or warning thresholds reached.
+* Poor: Collector offline (heartbeat absent >60s), severe resource exhaustion, or security breach.
+* Late or replayed events do not modify current live health. State transitions are timestamped in UTC and stored with machine-readable reason codes.
 
 ### 4. Explainable AIOps Anomaly Detection & Incident Correlation
-* **Statistical Anomaly Detection:** Rolling mean and standard deviation z-score detector ($z = \frac{x - \mu}{\sigma}$) with a variance floor ($\sigma_{\text{floor}}$) to eliminate false alarms during quiet periods.
-* **Transparent Evidence Scoring:** Incidents display observed values, historical baselines, contributing metric IDs, and a deterministic heuristic evidence score (0–100). No black-box AI latency or hallucinations.
-* **Graph & Time-Window Correlation:** Merges cascading alerts across configured topology dependencies within a sliding time window (e.g., database high disk I/O triggering backend latency) while keeping unrelated incidents strictly separated.
+* Rolling mean and standard deviation z-score detector ($z = \frac{x - \mu}{\sigma}$) with an adaptive variance floor ($\sigma_{\text{floor}}$) to avoid false positives during low-variance periods.
+* Incidents display observed values, historical baselines, contributing metric IDs, and a heuristic evidence score (0 to 100). Calibrated confidence and root-cause certainty are deliberately omitted per policy.
+* The incident engine groups related alerts across configured topology dependencies within a sliding time window while keeping unrelated tenant alerts separate.
 
 ### 5. Policy-Guarded Autonomous Ops Simulation
-* **Human-in-the-Loop Safeguards:** Implements a controlled remediation pathway for simulated demo targets (`SCALE_CONTAINER_MEMORY`).
-* **Multi-Step Lifecycle:** `proposed` $\rightarrow$ `approved` (requires explicit operator role) $\rightarrow$ `executing` $\rightarrow$ `succeeded`.
-* **Atomic Snapshot Rollback:** Before any capacity modification, the collector captures a local resource snapshot. The operator can trigger a rollback at any time, restoring original limits and capturing audit telemetry.
+* Remediation actions operate on pre-approved simulated targets (`SCALE_CONTAINER_MEMORY`).
+* State lifecycle progresses from `proposed` to `approved` (requires operator role), `executing`, and `succeeded`.
+* The collector records an in-memory snapshot before modifying target limits. Operators can trigger a rollback at any time to restore the original limit.
 
 ---
 
-## Performance & Reliability Targets
+## Performance Targets
 
-As specified in the hackathon evaluation guide, performance targets are measured against the organizer's simulated telemetry stream:
+Measured against the evaluation test suite:
 
 | Metric | Target | Measurement Method | Verification Check |
 |---|---|---|---|
-| **Collection-to-Dashboard Latency** | $\le 10\text{s}$ at $p95$ | Telemetry event timestamp vs. React first-visible-render timestamp | `V10` |
-| **Threshold Breach to Alert Raised** | $\le 15\text{s}$ | Injected fault timestamp vs. alert creation in SaaS database | `V07`, `V10` |
-| **Collector Offline Detection** | $\le 60\text{s}$ | Last heartbeat timestamp vs. status transition to `Poor` | `V05`, `V10` |
-| **Post-Outage Backlog Delivery** | $100\%$ delivery (0 loss, 0 dupes) | Sent UUID set vs. received UUID set after 30s network cutoff | `V04` |
+| Collection-to-Dashboard Latency | $\le 10\text{s}$ at $p95$ | Telemetry event timestamp vs. React first-visible-render timestamp | `V10` |
+| Threshold Breach to Alert Raised | $\le 15\text{s}$ | Injected fault timestamp vs. alert creation in SaaS database | `V07`, `V10` |
+| Collector Offline Detection | $\le 60\text{s}$ | Last heartbeat timestamp vs. status transition to `Poor` | `V05`, `V10` |
+| Post-Outage Backlog Delivery | $100\%$ delivery (0 loss, 0 dupes) | Sent UUID set vs. received UUID set after 30s network cutoff | `V04` |
 
 ---
 
 ## 8 Live Hackathon Scenarios
 
-Cicada includes automated fixtures and verifiers for all 8 hackathon evaluation scenarios:
+The test harness exercises all 8 evaluation scenarios:
 
 | # | Scenario Title | Injected Condition | Expected System Behavior | Check ID |
 |---|---|---|---|---|
-| **1** | **Raw Log Contains a Secret** | Ingest log lines with embedded AWS keys, JWTs, and passwords. | Raw secrets remain local; sanitized metadata reaches SaaS; egress proof shows exact redaction. | `V03` |
-| **2** | **Collector Loses Connectivity** | Simulate 30s SaaS network outage. | Collector buffers records in SQLite outbox; drains upon reconnect; 0 records lost, 0 duplicates. | `V04` |
-| **3** | **Repeated Failed Logins** | Ingest $\ge 5$ failed login attempts within 10s. | Local security analyzer triggers; exports typed threat summary; 0 raw usernames/passwords egress. | `V06` |
-| **4** | **Network Latency Rises** | Inject packet latency spike and loss on primary source. | Latency alert raised $\le 15\text{s}$; downstream dependency impact reflected on dashboard. | `V07` |
-| **5** | **Resource Anomaly (CPU/Memory)** | Inject sudden deviation against warm baseline. | Rolling z-score flags anomaly; cites baseline $\mu$, $\sigma$, and heuristic score; suggests investigation. | `V08` |
-| **6** | **Alert Storm Correlation** | Multi-signal storm across connected dependency graph. | Alerts grouped into single incident; concurrent unrelated tenant alerts remain strictly isolated. | `V08` |
-| **7** | **Duplicate & Out-of-Order Delivery** | Transmit duplicate UUIDs and late historical timestamps. | Deduplication ignores duplicate analytic effects; late events placed by event time without altering live health. | `V09` |
-| **8** | **Remediation & Rollback** | Memory leak incident triggers scaling recommendation. | Operator reviews proposal, approves action; collector executes scale; operator triggers snapshot rollback. | `V11` |
+| 1 | Raw Log Contains a Secret | Ingest log lines with embedded AWS keys, JWTs, and passwords. | Raw secrets remain local; sanitized metadata reaches SaaS; egress proof shows exact redaction. | `V03` |
+| 2 | Collector Loses Connectivity | Simulate 30s SaaS network outage. | Collector buffers records in SQLite outbox; drains upon reconnect; 0 records lost, 0 duplicates. | `V04` |
+| 3 | Repeated Failed Logins | Ingest $\ge 5$ failed login attempts within 10s. | Local security analyzer triggers; exports typed threat summary; 0 raw usernames/passwords egress. | `V06` |
+| 4 | Network Latency Rises | Inject packet latency spike and loss on primary source. | Latency alert raised $\le 15\text{s}$; downstream dependency impact reflected on dashboard. | `V07` |
+| 5 | Resource Anomaly (CPU/Memory) | Inject sudden deviation against warm baseline. | Rolling z-score flags anomaly; cites baseline $\mu$, $\sigma$, and heuristic score. | `V08` |
+| 6 | Alert Storm Correlation | Multi-signal storm across connected dependency graph. | Alerts grouped into single incident; concurrent unrelated tenant alerts remain strictly isolated. | `V08` |
+| 7 | Duplicate & Out-of-Order Delivery | Transmit duplicate UUIDs and late historical timestamps. | Deduplication ignores duplicate analytic effects; late events placed by event time without altering live health. | `V09` |
+| 8 | Remediation & Rollback | Memory leak incident triggers scaling recommendation. | Operator reviews proposal, approves action; collector executes scale; operator triggers snapshot rollback. | `V11` |
 
 ---
 
@@ -155,7 +153,7 @@ Cicada includes automated fixtures and verifiers for all 8 hackathon evaluation 
                CICADA TECHNOLOGY STACK
 ┌────────────────────────────────────────────────────────┐
 │                        FRONTEND                        │
-│  React 18  │  TypeScript  │  Vite  │  Plain CSS / SVG  │
+│  React 19  │  TypeScript  │  Vite  │  Plain CSS / SVG  │
 │  2-Second Polling  │  Browser First-Render Profiling   │
 └───────────────────────────┬────────────────────────────┘
                             │ Verified HTTPS (JSON)
@@ -171,6 +169,7 @@ Cicada includes automated fixtures and verifiers for all 8 hackathon evaluation 
 │  Python 3.11+ Daemon  │  Local Regex Scrubbing Engine  │
 │  SQLite Outbox Buffer  │  Loopback Egress Proof (HTTP) │
 │  Deterministic UUIDv5  │  Autonomous Simulation Worker │
+│  Four-State Health    │  AI-SPEC Contracts Enforced   │
 └────────────────────────────────────────────────────────┘
 ```
 
@@ -180,32 +179,33 @@ Cicada includes automated fixtures and verifiers for all 8 hackathon evaluation 
 
 ```
 monitor/
-├── .planning/                  # Authoritative GSD planning and architectural specifications
-│   ├── ARCHITECTURE.md         # Detailed trust boundary and network specification
+├── .planning/                  # Authoritative planning and specifications
+│   ├── ARCHITECTURE.md         # Trust boundary and network specification
 │   ├── CONTRACTS.md            # Complete API schemas and data contracts
 │   ├── REQUIREMENTS.md         # 43 canonical project requirements
 │   ├── ROADMAP.md              # 8-phase milestone breakdown and acceptance gates
 │   ├── STATE.md                # Project status, gate progress, and evidence log
 │   ├── TEAM_EXECUTION.md       # Ownership matrix across M1, M2, and M3
-│   ├── VALIDATION.md           # 14 acceptance checks (V00–V13) and test catalog
+│   ├── VALIDATION.md           # 14 acceptance checks (V00 to V13) and test catalog
 │   └── phases/                 # Individual capability phase plans (01 to 08)
 ├── docs/                       # Project documentation
-│   ├── ARCHITECTURE.md         # Architecture deep-dive and trust boundary guide
-│   ├── API.md                  # Comprehensive REST API reference (SaaS & Local)
+│   ├── ARCHITECTURE.md         # Architecture and trust boundary guide
+│   ├── API.md                  # REST API reference (SaaS and Local Collector)
 │   ├── RUNBOOK.md              # Live demonstration and judge evaluation guide
-│   └── CONTRIBUTING.md         # Developer guide, code standards, and PR workflow
+│   └── CONTRIBUTING.md         # Development guide, code standards, and PR workflow
 ├── backend/                    # Python 3.11+ backend services
 │   ├── shared/                 # Shared Pydantic models, schemas, and cryptographic helpers
 │   ├── collector/              # Tier 1 Local Collector daemon and outbox pipeline
-│   │   ├── adapters/           # Input adapters (Organizer JSONL / synthetic generator)
-│   │   ├── static/             # Local Egress Proof Panel HTML/JS
+│   │   ├── adapters/           # Input adapters (JSONL and synthetic generator)
+│   │   ├── static/             # Local Egress Proof Panel HTML
 │   │   └── demo_source.py      # Controllable simulation source for demo scenarios
 │   └── saas/                   # Tier 2 Central SaaS service
 │       ├── auth.py             # Tenant and role credential verification
 │       ├── storage.py          # SQLite database layer with idempotent transactions
-│       ├── aiops.py            # Rolling z-score detector & incident correlator
+│       ├── health.py           # 4-state health engine and watchdog
+│       ├── benchmark.py        # Browser render and offline delay benchmark engine
 │       └── main.py             # FastAPI entry point
-├── frontend/                   # Operations Dashboard (React 18 + TypeScript + Vite)
+├── frontend/                   # Operations Dashboard (React 19 + TypeScript + Vite)
 │   ├── src/
 │   │   ├── components/         # Fleet, Incidents, Egress Inspector, Remediation UI
 │   │   ├── api/                # Typed SaaS API client with 2s polling
@@ -215,13 +215,9 @@ monitor/
 │   ├── core/                   # Unit and integration tests for contracts, security, and outbox
 │   ├── scenarios/              # Black-box verifiers for all 8 hackathon scenarios
 │   └── ui/                     # Frontend integration and latency timing tests
-├── scripts/                    # Operational and validation scripts
-│   ├── security/               # Local dev CA and server SAN certificate generation
-│   └── verification/           # Runner scripts for judge validation suite
-├── AGENTS.md                   # Multi-agent collaboration agreement
-├── GEMINI.md                   # Gemini teammate specific guidance
-├── PROJECT_OVERVIEW.md         # High-level overview and kickoff notes
-└── README.md                   # This front-door document
+└── scripts/                    # Operational and validation scripts
+    ├── security/               # Local dev CA and server SAN certificate generation
+    └── verification/           # Runner scripts for evaluation suite
 ```
 
 ---
@@ -229,9 +225,9 @@ monitor/
 ## Getting Started & Local Setup
 
 ### Prerequisites
-* **Python:** 3.11 or newer (Python 3.15 supported).
-* **Node.js:** v18.0.0 or newer (v22+ recommended) with `npm`.
-* **Operating System:** Windows, macOS, or Linux.
+* Python: 3.11 or newer.
+* Node.js: v18.0.0 or newer with `npm`.
+* Operating System: Windows, macOS, or Linux.
 
 ### 1. Environment Setup
 
@@ -257,7 +253,7 @@ cd ..
 ```
 
 ### 2. Bootstrap Local Certificates & Credentials
-Cicada enforces strict verified TLS and cryptographic tokens. Run the security bootstrap tool to generate the local development CA, localhost SAN certificates, and tenant credentials in the ignored `.cicada/dev/` directory:
+Cicada enforces TLS and cryptographic tokens. Run the security bootstrap tool to generate the local development CA, localhost SAN certificates, and tenant credentials in `.cicada/dev/`:
 ```bash
 python -m scripts.security.bootstrap
 ```
@@ -272,12 +268,12 @@ python -m scripts.security.export_contracts
 ```
 
 ### 3. Running Central SaaS Service
-Start the central SaaS platform over verified HTTPS:
+Start the central SaaS platform over HTTPS:
 ```bash
 python -m backend.saas.main
 ```
 * SaaS API runs at: `https://localhost:8443`
-* Public Health check: `https://localhost:8443/healthz`
+* Public health check: `https://localhost:8443/healthz`
 * Query fleet status with generated operator credentials:
   ```powershell
   $operator = Get-Content -Raw .cicada/dev/operator-alpha.json | ConvertFrom-Json
@@ -292,7 +288,7 @@ python -m backend.collector.daemon
 * To run for Tenant Beta: `python -m backend.collector.daemon --tenant beta`
 * To run a single batch and exit: `python -m backend.collector.daemon --once`
 * To ingest local JSONL logs: `python -m backend.collector.daemon --input path/to/events.jsonl`
-* **Local Egress Proof Panel:** Open `http://localhost:9001/audit` in your browser. Enter the `local_token` from `.cicada/dev/collector-alpha.json` to inspect the raw input preview, sanitized outbound bytes, and matching SaaS receipt.
+* Local Egress Proof Panel: Open `http://localhost:9001/audit` in your browser. Enter the `local_token` from `.cicada/dev/collector-alpha.json` to inspect the raw input preview, sanitized outbound bytes, and matching SaaS receipt.
 
 ### 5. Running the Operations Dashboard
 In a third terminal:
@@ -314,51 +310,47 @@ python -m pytest tests/core
 
 # Run all 8 hackathon scenario verifiers
 python -m pytest tests/scenarios
+
+# Run UI verification checks
+node tests/ui/test-client.mjs
 ```
 
 ---
 
 ## Documentation Index
 
-Comprehensive documentation is organized across dedicated guides:
-
-* 📘 [Architecture & Trust Boundaries](file:///c:/Users/Safa%20Asmi/Documents/GitHub/monitor/docs/ARCHITECTURE.md) — Exhaustive network flow, encryption protocols, and transactional outbox mechanics.
-* 🚀 [Phase 1 Runbook](file:///c:/Users/Safa%20Asmi/Documents/GitHub/monitor/docs/PHASE1.md) — Detailed instructions for running and validating the Phase 1 core architecture and secure transport.
-* 📕 [REST API Reference](file:///c:/Users/Safa%20Asmi/Documents/GitHub/monitor/docs/API.md) — Complete endpoint catalog for both SaaS and Local Collector services.
-* 📗 [Judge Evaluation Runbook](file:///c:/Users/Safa%20Asmi/Documents/GitHub/monitor/docs/RUNBOOK.md) — Step-by-step walkthrough for verifying each of the 8 hackathon scenarios.
-* 📙 [Developer & Contributing Guide](file:///c:/Users/Safa%20Asmi/Documents/GitHub/monitor/docs/CONTRIBUTING.md) — Team git workflow, code ownership boundaries, and testing rules.
-* 📋 [Interface Authority (CONTRACTS.md)](file:///c:/Users/Safa%20Asmi/Documents/GitHub/monitor/.planning/CONTRACTS.md) — Strict nested schemas, field limits, and wire-receipt hashing specs.
-* 🎯 [Acceptance Catalog (VALIDATION.md)](file:///c:/Users/Safa%20Asmi/Documents/GitHub/monitor/.planning/VALIDATION.md) — Detailed specifications for checks `V00` through `V13`.
+* [Architecture & Trust Boundaries](docs/ARCHITECTURE.md): Network flow, encryption protocols, and transactional outbox mechanics.
+* [Phase 1 Runbook](docs/PHASE1.md): Procedures for running and validating the Phase 1 core architecture and transport.
+* [REST API Reference](docs/API.md): Endpoint catalog for both SaaS and Local Collector services.
+* [Judge Evaluation Runbook](docs/RUNBOOK.md): Step-by-step walkthrough for verifying each of the 8 hackathon scenarios.
+* [Developer & Contributing Guide](docs/CONTRIBUTING.md): Team git workflow, code ownership boundaries, and testing rules.
+* [Interface Authority (CONTRACTS.md)](.planning/CONTRACTS.md): Nested schemas, field limits, and wire-receipt hashing specs.
+* [Acceptance Catalog (VALIDATION.md)](.planning/VALIDATION.md): Specifications for checks `V00` through `V13`.
 
 ---
 
-## Team Roles & Execution Model
+## Team Roles
 
 The project is structured for a 3-member parallel development workflow:
 
 | Role | Member | Focus Areas & Owned Files |
 |---|---|---|
-| **M1: Lead / Core** | Project Lead | Architecture, shared Pydantic models (`backend/shared/**`), security sanitizer, outbox persistence, SaaS API (`backend/saas/**`), AIOps detector, and integration. |
-| **M2: Operations Dashboard** | Frontend Teammate | React 19 / Vite client (`frontend/**`), fleet health widgets, egress receipt inspector, incident views, and render-to-frame latency timing. |
-| **M3: Validation & Adapters** | Validation Teammate | Organizer telemetry adapters (`backend/collector/adapters/**`), pure demo source, local HTML proof UI, 8 scenario harnesses (`tests/scenarios/**`), and runbook. |
+| M1: Lead / Core | Project Lead | Architecture, shared Pydantic models (`backend/shared/**`), security sanitizer, outbox persistence, SaaS API (`backend/saas/**`), AIOps detector, and integration. |
+| M2: Operations Dashboard | Frontend Teammate | React 19 / Vite client (`frontend/**`), fleet health widgets, egress receipt inspector, incident views, and render-to-frame latency timing. |
+| M3: Validation & Adapters | Validation Teammate | Telemetry adapters (`backend/collector/adapters/**`), demo source, local HTML proof UI, 8 scenario harnesses (`tests/scenarios/**`), and runbook. |
 
 ---
 
-## Status & Limitations
+## Status and Limitations
 
 ### Current Status
-* **Phase:** Phase 1 (Core Architecture & Secure Transport) & Phase 2 (Local Privacy Pipeline & Egress Matcher) **IMPLEMENTED & MERGED** on `main`.
-* **Gates Achieved:**
-  * **Gate G0 (Contracts Frozen):** Pydantic v2 nested models, strict schemas, and OpenAPI exports finalized.
-  * **Gate G1 (End-to-End Ingest & Live Render):** End-to-end telemetry receipt verified from local collector to central SaaS and rendered in browser harness.
-* **Application Runtime:** Functional Two-Tier runtime (FastAPI HTTPS SaaS, loopback Collector daemon, local HTML proof inspector, React 19 / Vite dashboard).
-* **Checks Passed:**
-  * `V01` (Verified TLS 1.3, CA enforcement, wrong hostname/token rejection).
-  * `V02` (Tenant isolation on ingest and fleet queries).
-  * `V03` (Zero-egress SHA-256 wire digest matching).
-* **Pending External Inputs:** Official organizer telemetry stream format pending (currently operating on verified `DEMO_FALLBACK`).
+* Phases 1 through 4 are integrated on `main`. Phases 5 through 8 UI views are complete on the dashboard branch.
+* Gates G0 through G3 achieved.
+* Runtime includes HTTPS SaaS, loopback Collector daemon, local HTML proof inspector, and React 19 / Vite dashboard.
+* Checks V01, V02, V03, V04, V05, V07, V08, V09, V10, V11 verified on synthetic test inputs.
+* Official organizer telemetry stream format remains pending; operating on verified demo fallback.
 
-### Scoped Boundaries (Hackathon vs. Production)
-* **Single-Process SQLite:** The prototype uses SQLite WAL/FULL for bulletproof local durability without multi-container operational complexity (no Kafka or Redis required for hackathon validation).
-* **Simulated Remediation:** Autonomous operations are strictly limited to the `SCALE_CONTAINER_MEMORY` playbook running against an in-memory demo target. Real-world autonomous server mutations are intentionally out of scope.
-* **Regional Data Residency:** Regional ingest is enforced via token-to-endpoint routing; geographic physical multi-region cloud deployment is designed and documented rather than physically provisioned.
+### Scoped Boundaries
+* Single-process SQLite: Uses SQLite WAL/FULL for local durability without multi-container operational overhead.
+* Simulated Remediation: Autonomous operations are bounded to the `SCALE_CONTAINER_MEMORY` simulation playbook.
+* Regional Data Residency: Enforced via token-to-endpoint routing; multi-region physical infrastructure is documented rather than provisioned.
