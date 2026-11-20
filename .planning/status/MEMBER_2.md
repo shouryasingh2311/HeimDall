@@ -1,7 +1,7 @@
 # Member 2 status
 
-Status: complete (Phases 1 through 8 UI fully delivered, verified, and hardened).
-Branch: feat/operations-dashboard.
+Status: complete (Phases 1 through 8 UI fully delivered, verified, and integrated into release).
+Branch: feat/operations-dashboard (in sync with main at d27301a).
 Completed task/requirement IDs:
 - Phase 1 / G0-G1: Frontend scaffold (React 19 + TypeScript + Vite), live 2s polling API client with AbortController cancellation of overlapping requests.
 - Phase 2 / G1-G2 (PRIV-01, PRIV-02, PRIV-05, DASH-02): Received-payload inspector with quick-select preset UUIDs, cryptographic SHA-256 digest matcher, and two-window zero-egress verification protocol.
@@ -12,10 +12,10 @@ Completed task/requirement IDs:
 - Phase 7 / G4-G5: ScenarioResultsView presenting all 8 verification scenarios (V01–V09), aggregate scoreboard, assertion checks, egress payload inspection links, triggered incident navigation, and clear instructions linking to Member 3's isolated local runner (http://localhost:9001/audit).
 - Phase 8 / G5 (DASH-01, PERF-01): Accessibility & keyboard navigation (ARIA tabs, dialog roles, Escape key close on modals, focus outlines), tenant cache wiping on scope change, live first-render benchmark telemetry recording, and zero mock fallback on production errors.
 Checks executed and observed results:
-- `npm --prefix frontend run build`: PASSED (0 errors, production bundle compiled in 165ms).
+- `npm --prefix frontend run build`: PASSED (0 errors, production bundle compiled in 128ms).
 - `node tests/ui/test-client.mjs`: PASSED (15/15 UI checks: first-render benchmark recording, deduplication suppression, tenant cache wipe, honest 503 error handling, payload lookup, zero-egress privacy verification, SHA-256 digest matcher, setConfig scope switch, buffer depth aggregation & non-inference rule, getSourceMetrics chronological event-time order, heuristic evidence score bounds & method, affected pseudonymous sources privacy, remediation simulation invariant, approve & rollback lifecycle progression, scenario verification summary mapping).
 Interface requests: none; strictly conforms to CONTRACTS.md v1.
-Next: assist lead (M1) and validation engineer (M3) during final end-to-end integration rehearsal.
+Next: assist lead (M1) and validation engineer (M3) during final judge demo walk-through.
 Blockers: none.
 
 Update only this member's file every 30-45 minutes. Record evidence and commit SHA, not just activity. M1 alone updates integrated STATE.md.
