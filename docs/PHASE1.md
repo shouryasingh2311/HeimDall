@@ -23,7 +23,7 @@ Read the actual SaaS fleet using the generated operator credential. Keep the cre
     $operator = Get-Content -Raw .cicada/dev/operator-alpha.json | ConvertFrom-Json
     curl.exe --cacert .cicada/dev/ca.pem -H "Authorization: Bearer $($operator.token)" -H "X-Tenant-ID: $($operator.tenant_id)" https://localhost:8443/api/v1/fleet
 
-Open http://localhost:9001/audit separately. Enter the local_token value from .cicada/dev/collector-alpha.json to inspect the input preview, the exact approved outbound bytes, and the SaaS receipt. The local session token and operator token have distinct scopes.
+Open http://localhost:9001/audit separately. Enter the local_token value from .cicada/dev/collector-alpha.json to inspect the masked local preview, the exact approved outbound bytes, and the SaaS receipt. Paste an optional UUID to retrieve a specific retained record. The local session token and operator token have distinct scopes.
 
 ## Schema and dashboard handoff
 
@@ -31,7 +31,9 @@ Open http://localhost:9001/audit separately. Enter the local_token value from .c
 
 Share the generated OpenAPI and synthetic metadata, heartbeat, and receipt examples under .cicada/contracts. They contain no live credentials. Frontend dev CORS accepts only the configured localhost origin. SaaS can serve a React build using --dashboard frontend/dist from the integration checkout. For a direct HTTPS browser run, trust only the locally generated development CA in the browser's trust store after inspecting its source.
 
-The dashboard branch at 1d90f88 defaults to a fixed development tenant and token and still displays a verified-gates footer. Its integration follow-up is operator-supplied credentials and evidence-backed status. The browser check supplies fresh credentials to the real tenant-scoped API through a CA-verified HTTPS client. Keep the application credentials generated per runtime.
+Build with npm --prefix frontend ci and npm --prefix frontend run build. Start SaaS with --dashboard frontend/dist. In the dashboard enter the tenant ID and token from .cicada/dev/operator-alpha.json and connect. Look up the UUID from the local window, then paste the local SHA-256 digest. Matching digests show agreement for the selected request body. The privacy checks separately inspect SaaS data for forbidden fields and secret markers.
+
+For the privacy demo, start the alpha collector with --input tests/scenarios/fixtures/secrets.jsonl. Keep it running to inspect the retained records. The fixture timestamps are historical and are unsuitable for live latency claims.
 
 ## Verification
 

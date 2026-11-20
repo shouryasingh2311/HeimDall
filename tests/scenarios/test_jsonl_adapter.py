@@ -8,28 +8,30 @@ Verifies:
 - Handles corrupt/empty lines cleanly with error diagnostics.
 """
 
+import asyncio
 from pathlib import Path
-import pytest
 
 from backend.collector.adapters.jsonl_adapter import JSONLAdapter
 
 
-@pytest.mark.asyncio
-async def test_jsonl_adapter_parses_secrets_fixture():
-    fixture_path = Path("tests/scenarios/fixtures/secrets.jsonl")
-    assert fixture_path.exists()
+def test_jsonl_adapter_parses_secrets_fixture():
+    async def _test():
+        fixture_path = Path("tests/scenarios/fixtures/secrets.jsonl")
+        assert fixture_path.exists()
 
-    adapter = JSONLAdapter(fixture_path)
-    events = []
-    async for ev in adapter.events():
-        events.append(ev)
+        adapter = JSONLAdapter(fixture_path)
+        events = []
+        async for ev in adapter.events():
+            events.append(ev)
 
-    stats = adapter.get_stats()
-    assert stats["valid_records_yielded"] == 3
-    assert stats["malformed_count"] == 0
+        stats = adapter.get_stats()
+        assert stats["valid_records_yielded"] == 3
+        assert stats["malformed_count"] == 0
 
-    # Ensure sensitive fields are preserved locally in RawEvent
-    assert "SuperSecretPassword123" in events[0].raw_text
-    assert events[2].kind == "auth"
-    assert events[2].username == "admin"
-    assert events[2].source_ip == "10.0.0.42"
+        # Ensure sensitive fields are preserved locally in RawEvent
+        assert "SuperSecretPassword123" in events[0].raw_text
+        assert events[2].kind == "auth"
+        assert events[2].username == "admin"
+        assert events[2].source_ip == "10.0.0.42"
+
+    asyncio.run(_test())

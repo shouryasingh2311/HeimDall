@@ -13,6 +13,31 @@ import { apiClient } from './api/client';
 type TabKey = 'fleet' | 'inspector' | 'incidents' | 'scenarios';
 
 export function App() {
+  const [session, setSession] = useState(0);
+
+  return (
+    <>
+      <form className="search-form" onSubmit={(event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const data = new FormData(form);
+        const tenant = String(data.get('tenant') ?? '').trim();
+        const token = String(data.get('token') ?? '').trim();
+        if (!tenant || !token) return;
+        apiClient.setTenant(tenant, token);
+        form.reset();
+        setSession((value) => value + 1);
+      }}>
+        <label>Tenant ID <input name="tenant" required className="input-text" /></label>
+        <label>Operator token <input name="token" type="password" required autoComplete="off" className="input-text" /></label>
+        <button className="action-btn">Connect dashboard</button>
+      </form>
+      <Dashboard key={session} />
+    </>
+  );
+}
+
+function Dashboard() {
   const [activeTab, setActiveTab] = useState<TabKey>('fleet');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const {
@@ -112,7 +137,7 @@ export function App() {
           <span>Timing Resolution: performance.now() &plusmn;0.1ms</span>
         </div>
         <div className="footer-right">
-          <span>Compliance: G0–G6 Gates Verified</span>
+          <span>Prototype</span>
           <span>&bull;</span>
           <span>Separate Local Audit: <code>http://localhost:9001/audit</code></span>
         </div>
