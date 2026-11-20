@@ -1,0 +1,9 @@
+{"case": "exact_duplicate_payload", "description": "Same UUID/body retried after simulated network drop; server must deduplicate and return same receipt hash without double counting", "records": [
+  {"source_key": "tenant-alpha:lb-01", "tenant_id": "tenant-alpha", "collector_id": "collector-alpha-1", "input_id": "dedup-case-001", "event_time_utc": "2026-11-20T14:20:00.000Z", "kind": "metric", "metrics": {"cpu_pct": 22.0, "latency_ms": 9.5, "service_available": true, "connectivity": true}},
+  {"source_key": "tenant-alpha:lb-01", "tenant_id": "tenant-alpha", "collector_id": "collector-alpha-1", "input_id": "dedup-case-001", "event_time_utc": "2026-11-20T14:20:00.000Z", "kind": "metric", "metrics": {"cpu_pct": 22.0, "latency_ms": 9.5, "service_available": true, "connectivity": true}}
+]}
+{"case": "out_of_order_stream", "description": "Three events arriving out of chronological order (t3, t1, t2); query must sort by event_time_utc, and late events must not revert fresh health state", "records": [
+  {"source_key": "tenant-alpha:api-01", "tenant_id": "tenant-alpha", "collector_id": "collector-alpha-1", "input_id": "order-case-003", "event_time_utc": "2026-11-20T14:21:00.000Z", "kind": "metric", "metrics": {"cpu_pct": 31.0, "service_available": true, "connectivity": true}},
+  {"source_key": "tenant-alpha:api-01", "tenant_id": "tenant-alpha", "collector_id": "collector-alpha-1", "input_id": "order-case-001", "event_time_utc": "2026-11-20T14:20:00.000Z", "kind": "metric", "metrics": {"cpu_pct": 29.0, "service_available": true, "connectivity": true}},
+  {"source_key": "tenant-alpha:api-01", "tenant_id": "tenant-alpha", "collector_id": "collector-alpha-1", "input_id": "order-case-002", "event_time_utc": "2026-11-20T14:20:30.000Z", "kind": "metric", "metrics": {"cpu_pct": 30.0, "service_available": true, "connectivity": true}}
+]}
