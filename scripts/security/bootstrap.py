@@ -19,17 +19,18 @@ from backend.collector.sanitizer import pseudonym
 from backend.shared.models import utc_now
 
 
-def private_write(path: Path, data: bytes):
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+def private_write(path: Path, data: bytes, overwrite: bool = False):
+    flags = os.O_WRONLY | os.O_CREAT | (os.O_TRUNC if overwrite else os.O_EXCL)
+    fd = os.open(path, flags, 0o600)
     with os.fdopen(fd, "wb") as stream:
         stream.write(data)
 
 
-def write_json(path: Path, data: dict):
-    private_write(path, (json.dumps(data, indent=2) + "\n").encode())
+def write_json(path: Path, data: dict, overwrite: bool = False):
+    private_write(path, (json.dumps(data, indent=2) + "\n").encode(), overwrite=overwrite)
 
 
-def issue_certificates(runtime: Path):
+def issue_certificates(runtime: Path, overwrite: bool = False):
     now = utc_now()
     ca_key = ec.generate_private_key(ec.SECP256R1())
     server_key = ec.generate_private_key(ec.SECP256R1())
@@ -63,16 +64,18 @@ def issue_certificates(runtime: Path):
         .add_extension(x509.ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH]), critical=False)
         .sign(ca_key, hashes.SHA256())
     )
-    private_write(runtime / "ca.pem", ca.public_bytes(serialization.Encoding.PEM))
-    private_write(runtime / "server.pem", leaf.public_bytes(serialization.Encoding.PEM))
+    private_write(runtime / "ca.pem", ca.public_bytes(serialization.Encoding.PEM), overwrite=overwrite)
+    private_write(runtime / "server.pem", leaf.public_bytes(serialization.Encoding.PEM), overwrite=overwrite)
     private_write(runtime / "server.key", server_key.private_bytes(
         serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()
-    ))
+    ), overwrite=overwrite)
 
 
-def bootstrap(runtime: Path, saas_port=8443, local_base=9001):
-    runtime.mkdir(mode=0o700, parents=True)
-    issue_certificates(runtime)
+def bootstrap(runtime: Path, saas_port=8443, local_base=9001, force: bool = False):
+    if not force and ((runtime / "ca.pem").exists() or (runtime / "saas.json").exists()):
+        raise FileExistsError(f"Runtime at {runtime} already initialized")
+    runtime.mkdir(mode=0o700, parents=True, exist_ok=True)
+    issue_certificates(runtime, overwrite=force)
     credentials = []
     dependencies = {}
     for offset, region in enumerate(("us-east-1", "eu-west-1")):
@@ -93,8 +96,8 @@ def bootstrap(runtime: Path, saas_port=8443, local_base=9001):
             "hmac_key": key, "local_token": local_token, "source_keys": sources,
             "saas_url": f"https://localhost:{saas_port}", "local_port": local_base + offset,
             "demo_memory_source": demo_memory_source,
-        })
-        write_json(runtime / f"operator-{label}.json", {"tenant_id": tenant, "token": operator})
+        }, overwrite=force)
+        write_json(runtime / f"operator-{label}.json", {"tenant_id": tenant, "token": operator}, overwrite=force)
         credentials.extend([
             {"role": "collector", "tenant_id": tenant, "region": region, "collector_id": collector,
              "token_sha256": hashlib.sha256(token.encode()).hexdigest(),
@@ -105,7 +108,7 @@ def bootstrap(runtime: Path, saas_port=8443, local_base=9001):
         ])
     write_json(runtime / "saas.json", {
         "credentials": credentials, "dev_origin": "http://localhost:5173", "dependencies": dependencies,
-    })
+    }, overwrite=force)
 
 
 def main():
@@ -113,9 +116,10 @@ def main():
     parser.add_argument("--runtime", type=Path, default=Path(".heimdal/dev"))
     parser.add_argument("--saas-port", type=int, default=8443)
     parser.add_argument("--local-port", type=int, default=9001)
+    parser.add_argument("--force", "-f", action="store_true", help="Force overwrite existing runtime files")
     args = parser.parse_args()
     try:
-        bootstrap(args.runtime, args.saas_port, args.local_port)
+        bootstrap(args.runtime, args.saas_port, args.local_port, force=args.force)
     except FileExistsError:
         parser.exit(1, "Runtime already exists. Use the existing settings, or choose a new runtime directory.\n")
     print(f"Created demo certificates and private credentials in {args.runtime}")

@@ -8,8 +8,7 @@ LOCAL_PORT="${LOCAL_PORT:-9001}"
 # Bootstrap runtime credentials, loopback TLS certificates, and tokens if not already generated
 if [ ! -f "$RUNTIME_DIR/ca.pem" ] || [ ! -f "$RUNTIME_DIR/saas.json" ]; then
     echo "==> Initializing HeimDall security identities & certificates in $RUNTIME_DIR..."
-    mkdir -p "$RUNTIME_DIR"
-    python -m scripts.security.bootstrap --runtime "$RUNTIME_DIR" --saas-port "$SAAS_PORT" --local-port "$LOCAL_PORT"
+    python -m scripts.security.bootstrap --runtime "$RUNTIME_DIR" --saas-port "$SAAS_PORT" --local-port "$LOCAL_PORT" --force
 fi
 
 # Extract credentials for quick operator access

@@ -1,4 +1,4 @@
-﻿# HeimDall - 1-Command Windows Native Launcher (No Docker required)
+# HeimDall - 1-Command Windows Native Launcher (No Docker required)
 $ErrorActionPreference = "Stop"
 
 Write-Host "==========================================================================" -ForegroundColor Cyan
