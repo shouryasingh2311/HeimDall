@@ -1,0 +1,2 @@
+{"ts": 1795176000, "node": "api-01", "cpu_usage": 55.0, "memory_usage": 65.0}
+{"time": 1795176005000, "source": "worker-01", "cpu": 25.0, "memory": 38.0}

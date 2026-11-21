@@ -281,6 +281,42 @@ export class HeimdalApiClient {
       return false;
     }
   }
+
+  /**
+   * Download an export file with proper tenant and auth headers.
+   */
+  public async downloadExport(endpoint: string, defaultFilename: string): Promise<void> {
+    const isAbsolute = endpoint.startsWith('http://') || endpoint.startsWith('https://');
+    const url = isAbsolute ? endpoint : `${this.config.baseUrl}${endpoint}`;
+    const headers: Record<string, string> = {};
+    if (!isAbsolute) {
+      headers['X-Tenant-ID'] = this.config.tenantId;
+      if (this.config.operatorToken) {
+        headers['Authorization'] = `Bearer ${this.config.operatorToken}`;
+      }
+    }
+    const res = await fetch(url, { headers });
+    if (!res.ok) {
+      throw new ApiError(res.status, res.statusText, endpoint);
+    }
+    const blob = await res.blob();
+    const disposition = res.headers.get('Content-Disposition');
+    let filename = defaultFilename;
+    if (disposition) {
+      const match = disposition.match(/filename="?([^"]+)"?/);
+      if (match && match[1]) {
+        filename = match[1];
+      }
+    }
+    const blobUrl = window.URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = blobUrl;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.URL.revokeObjectURL(blobUrl);
+  }
 }
 
 // Global singleton instance for UI usage

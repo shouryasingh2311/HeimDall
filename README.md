@@ -123,6 +123,25 @@ Monitored sources and collectors are evaluated into one of four states:
 * State lifecycle progresses from `proposed` to `approved` (requires operator role), `executing`, and `succeeded`.
 * The collector persists the snapshot and simulated capacity change in SQLite. After the action succeeds, an operator can restore the original limit.
 
+### 6. Universal Multi-Format Telemetry Import (`AutoAdapter`)
+* Supports JSONL, JSON array, `{"records": [...]}` envelopes, CSV, TSV (with headers), and `.gz` compressed versions of each.
+* Live streaming and polling ingestion from HTTP(S) feeds via `--organizer-url <url>`.
+* Configurable field mapping via `--map mapping.yaml` / `.json` and automatic alias guessing for legacy formats.
+* Robust timestamp normalization across ISO 8601, epoch seconds, and epoch milliseconds to UTC.
+* Ratio-to-percentage normalization (converts $0.0 < v \le 1.0$ ratios to percentage metrics).
+* Dry-run inspection CLI (`python -m backend.collector.inspect_input <file>`) that previews the first 5 records, chosen mappings, and diagnostics, failing loudly on empty or missing files.
+
+### 7. Central SaaS Metadata & Local Egress Proof Export
+* Central SaaS export CLI (`python -m backend.saas.export`) and authenticated REST endpoints (`/api/v1/export/*`):
+  * Metrics timeseries (CSV / JSON)
+  * Health state transitions (CSV / JSON)
+  * AIOps incident dossiers with baselines, z-scores, and evidence ratings (JSON / readable Markdown report)
+  * Autonomous and manual remediation audit trail (CSV / JSON)
+  * Full tenant export archive (.zip)
+* Local collector egress proof CLI (`python -m backend.collector.export_proof`) and loopback endpoint (`/api/local/export/proof`):
+  * Cryptographically links approved wire bytes, SHA-256 digests, and SaaS receipts for auditability.
+* One-click "Export" button on the Operations Dashboard.
+
 ---
 
 ## Performance Targets
@@ -347,8 +366,13 @@ In a separate terminal, start the local collector daemon:
 python -m backend.collector.daemon --scenarios
 ```
 * To run for Tenant Beta: `python -m backend.collector.daemon --tenant beta`
-* To run a single batch and exit: `python -m backend.collector.daemon --once`
-* To ingest local JSONL logs: `python -m backend.collector.daemon --input path/to/events.jsonl`
+* Run continuous simulation: `python -m backend.collector.daemon`
+* Ingest any local telemetry format (JSONL, JSON array/envelope, CSV, TSV, and `.gz` compressed versions): `python -m backend.collector.daemon --input path/to/events.csv`
+* Live streaming / polling HTTP(S) source: `python -m backend.collector.daemon --organizer-url https://feed.example.org/stream`
+* Custom field mapping: `python -m backend.collector.daemon --input metrics.tsv --map mapping.yaml`
+* Dry-run input inspection: `python -m backend.collector.inspect_input path/to/events.csv [--map mapping.yaml]`
+* Central SaaS metadata export: `python -m backend.saas.export --tenant alpha --table bundle --output heimdal_export.zip`
+* Local collector cryptographic egress proof export: `python -m backend.collector.export_proof --output egress_proof.json`
 * Local Egress Proof Panel: Open `http://localhost:9001/audit` in your browser. Enter the `local_token` from `.heimdal/dev/collector-alpha.json` to inspect the raw input preview, sanitized outbound bytes, and matching SaaS receipt.
 
 #### 5. Opening the Operations Dashboard

@@ -9,18 +9,19 @@ import json
 import os
 from pathlib import Path
 import sys
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.routing import APIRoute
 from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 from backend.saas.auth import Authenticator
 from backend.saas import benchmark
+from backend.saas import export as export_engine
 from backend.saas.health import HealthMonitor
 from backend.saas.incidents import IncidentEngine
 from backend.saas.remediation import Remediation, public_action
@@ -314,6 +315,80 @@ def create_app(settings: ServerSettings, db_path: Path, dashboard: Path | None =
         run_id: Identifier = "default-run", session_id: Identifier | None = None,
     ):
         return await benchmark.summary(storage, credential.tenant_id, run_id, session_id)
+
+    @app.get("/api/v1/export/metrics")
+    async def export_metrics(
+        credential: Credential = Depends(operator), storage: Storage = Depends(store),
+        format: Literal["json", "csv"] = "json",
+        from_time: str | None = Query(None, alias="from"),
+        to_time: str | None = Query(None, alias="to"),
+    ):
+        data = await export_engine.fetch_metrics_data(storage.db, credential.tenant_id, from_time, to_time)
+        if format == "csv":
+            fields = [
+                "payload_uuid", "source_id", "event_time_utc", "received_at_utc", "body_sha256",
+                "cpu_pct", "memory_pct", "disk_used_pct", "latency_ms", "packet_loss_pct",
+                "net_tx_bps", "net_rx_bps", "service_available", "connectivity"
+            ]
+            return Response(content=export_engine.to_csv_string(data, fields), media_type="text/csv",
+                            headers={"Content-Disposition": 'attachment; filename="metrics.csv"'})
+        return data
+
+    @app.get("/api/v1/export/transitions")
+    async def export_transitions(
+        credential: Credential = Depends(operator), storage: Storage = Depends(store),
+        format: Literal["json", "csv"] = "json",
+        from_time: str | None = Query(None, alias="from"),
+        to_time: str | None = Query(None, alias="to"),
+    ):
+        data = await export_engine.fetch_transitions_data(storage.db, credential.tenant_id, from_time, to_time)
+        if format == "csv":
+            fields = ["id", "entity_type", "entity_id", "from_state", "to_state", "reasons", "observed_at_utc"]
+            return Response(content=export_engine.to_csv_string(data, fields), media_type="text/csv",
+                            headers={"Content-Disposition": 'attachment; filename="transitions.csv"'})
+        return data
+
+    @app.get("/api/v1/export/incidents")
+    async def export_incidents(
+        credential: Credential = Depends(operator), storage: Storage = Depends(store),
+        format: Literal["json", "markdown"] = "json",
+        from_time: str | None = Query(None, alias="from"),
+        to_time: str | None = Query(None, alias="to"),
+    ):
+        data = await export_engine.fetch_incidents_data(storage.db, credential.tenant_id, from_time, to_time)
+        if format == "markdown":
+            md = export_engine.generate_incident_markdown(data, credential.tenant_id)
+            return Response(content=md, media_type="text/markdown",
+                            headers={"Content-Disposition": 'attachment; filename="incident_report.md"'})
+        return data
+
+    @app.get("/api/v1/export/remediation")
+    async def export_remediation(
+        credential: Credential = Depends(operator), storage: Storage = Depends(store),
+        format: Literal["json", "csv"] = "json",
+        from_time: str | None = Query(None, alias="from"),
+        to_time: str | None = Query(None, alias="to"),
+    ):
+        data = await export_engine.fetch_remediation_audit(storage.db, credential.tenant_id, from_time, to_time)
+        if format == "csv":
+            fields = ["id", "action_id", "actor", "previous_status", "status", "policy_verdict", "reason_code", "occurred_at"]
+            return Response(content=export_engine.to_csv_string(data, fields), media_type="text/csv",
+                            headers={"Content-Disposition": 'attachment; filename="remediation_audit.csv"'})
+        return data
+
+    @app.get("/api/v1/export/bundle")
+    async def export_bundle(
+        credential: Credential = Depends(operator), storage: Storage = Depends(store),
+        from_time: str | None = Query(None, alias="from"),
+        to_time: str | None = Query(None, alias="to"),
+    ):
+        metrics = await export_engine.fetch_metrics_data(storage.db, credential.tenant_id, from_time, to_time)
+        transitions = await export_engine.fetch_transitions_data(storage.db, credential.tenant_id, from_time, to_time)
+        incidents = await export_engine.fetch_incidents_data(storage.db, credential.tenant_id, from_time, to_time)
+        remediation = await export_engine.fetch_remediation_audit(storage.db, credential.tenant_id, from_time, to_time)
+        bundle_bytes = export_engine.build_export_zip(metrics, transitions, incidents, remediation, credential.tenant_id)
+        return Response(content=bundle_bytes, media_type="application/zip",
+                        headers={"Content-Disposition": f'attachment; filename="heimdall-export-{credential.tenant_id}.zip"'})
 
 
     if dashboard is not None:

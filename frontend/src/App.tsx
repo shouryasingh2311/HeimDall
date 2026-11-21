@@ -13,6 +13,7 @@ import { LoginPage } from './components/LoginPage';
 import { apiClient } from './api/client';
 import { BenchmarkPanel } from './components/BenchmarkPanel';
 import { DevDashboard } from './components/DevDashboard';
+import { ExportModal } from './components/ExportModal';
 
 const views = [
   { key: 'fleet', label: 'Fleet overview', name: 'Fleet & Health State', description: 'Collector health, source activity, and the edge outbox.' },
@@ -54,6 +55,7 @@ function Dashboard({ onSignOut }: { onSignOut: (message?: string) => void }) {
   useWorkspaceMotion(workspace, activeTab);
   const [inspectPayloadUuid, setInspectPayloadUuid] = useState<string | undefined>(undefined);
   const [targetIncidentId, setTargetIncidentId] = useState<string | undefined>(undefined);
+  const [exportOpen, setExportOpen] = useState(false);
 
   const {
     data,
@@ -125,9 +127,11 @@ function Dashboard({ onSignOut }: { onSignOut: (message?: string) => void }) {
               Dark mode
             </label>
             <span className="session-tenant" title="Signed-in tenant">{apiClient.getTenantId()}</span>
+            <button className="action-btn" onClick={() => setExportOpen(true)}>Export</button>
             <button className="action-btn" onClick={() => onSignOut()}>Sign out</button>
           </div>
         </header>
+        {exportOpen && <ExportModal onClose={() => setExportOpen(false)} />}
         <main ref={workspace} id="workspace" tabIndex={-1} className="heimdal-main-content">
           <div className="page-title"><h1>{view.label}</h1><p>{view.description}</p></div>
           <ConnectionBanner serverStatus={serverStatus} error={error} lastSyncUtc={lastSyncUtc}

@@ -1,0 +1,4 @@
+timestamp,host,cpu_pct,memory_pct,disk_used_pct,latency_ms,packet_loss_pct,net_tx_bps,net_rx_bps
+2026-11-20T12:03:00Z,api-01,52.3,61.4,73.1,14.2,0.0,12000,24000
+2026-11-20T12:03:05Z,db-01,82.0,88.5,92.0,48.0,0.2,9500,18000
+2026-11-20T12:03:10Z,worker-01,22.1,35.0,42.0,9.1,0.0,5000,7500

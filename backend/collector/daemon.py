@@ -13,6 +13,7 @@ from uuid import uuid4
 import psutil
 import uvicorn
 
+from backend.collector.adapters.auto_adapter import AutoAdapter
 from backend.collector.adapters.jsonl_adapter import JSONLAdapter
 from backend.collector.adapters.organizer_adapter import OrganizerAdapter
 from backend.collector.buffer_queue import Outbox
@@ -112,17 +113,28 @@ class Collector:
             await asyncio.sleep(10)
 
     async def events(self, args, generator: DemoSource, scenarios: ScenarioRunner | None = None):
-        if args.input is not None or args.organizer is not None:
-            path = args.input or args.organizer
-            if not path.is_file():
-                LOG.error("Explicit input file is missing")
-                return False
-            if args.input is not None:
-                adapter = JSONLAdapter(path)
-                LOG.info("Input mode: local JSONL")
+        if getattr(args, "organizer_url", None) or args.input is not None or args.organizer is not None:
+            if getattr(args, "organizer_url", None):
+                adapter = AutoAdapter(
+                    url=args.organizer_url,
+                    map_path=getattr(args, "map", None),
+                    tenant_id=self.settings.tenant_id,
+                    collector_id=self.settings.collector_id,
+                )
+                LOG.info("Input mode: live organizer stream/poll (%s)", args.organizer_url)
             else:
-                adapter = OrganizerAdapter(path, self.settings.tenant_id, self.settings.collector_id)
-                LOG.info("Input mode: organizer adapter; stream compatibility depends on supplied input")
+                path = args.input or args.organizer
+                if not path.is_file():
+                    LOG.error("Explicit input file is missing: %s", path)
+                    return False
+                adapter = AutoAdapter(
+                    source=path,
+                    map_path=getattr(args, "map", None),
+                    tenant_id=self.settings.tenant_id,
+                    collector_id=self.settings.collector_id,
+                )
+                LOG.info("Input mode: auto adapter (%s)", adapter.detected_format or "auto")
+
             accepted = True
             count = 0
             async for event in adapter.events():
@@ -226,10 +238,12 @@ def main():
     parser.add_argument("--tenant", choices=["alpha", "beta"], default="alpha")
     parser.add_argument("--host", default=os.getenv("HEIMDAL_HOST", "127.0.0.1"), help="Host interface to bind local inspector")
     source = parser.add_mutually_exclusive_group()
-    source.add_argument("--input", type=Path, help="Local RawEvent JSONL file")
-    source.add_argument("--organizer", type=Path, help="Organizer JSONL file")
+    source.add_argument("--input", type=Path, help="Local RawEvent JSONL/CSV/TSV/JSON file")
+    source.add_argument("--organizer", type=Path, help="Organizer telemetry file")
+    source.add_argument("--organizer-url", help="Live organizer polling or streaming HTTP(S) URL")
     source.add_argument("--demo-memory-pressure", action="store_true", help="Enable the isolated memory simulation")
     source.add_argument("--scenarios", action="store_true", help="Enable the local synthetic scenario runner")
+    parser.add_argument("--map", type=Path, help="Field mapping file (YAML or JSON)")
     parser.add_argument("--once", action="store_true", help="Send one batch or file and exit")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")

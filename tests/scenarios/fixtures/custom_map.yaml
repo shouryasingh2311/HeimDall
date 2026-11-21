@@ -1,0 +1,6 @@
+server_name: host
+event_time: timestamp
+proc_load: cpu_pct
+ram_usage: memory_pct
+storage_pct: disk_used_pct
+response_time: latency_ms

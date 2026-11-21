@@ -165,6 +165,29 @@ def create_inspector(
         check_token(request)
         return {"retained_previews": len(audit.latest(500)), **await queue_status()}
 
+    @app.get("/api/local/export/proof")
+    async def export_proof(request: Request):
+        check_token(request)
+        items = audit.latest(500)
+        return {
+            "collector_id": settings.collector_id,
+            "tenant_id": settings.tenant_id,
+            "region": settings.region,
+            "count": len(items),
+            "items": [
+                {
+                    "payload_uuid": item["payload_uuid"],
+                    "policy_version": item["policy_version"],
+                    "approved_body": item["approved_body"],
+                    "body_sha256": item["body_sha256"],
+                    "state": item["state"],
+                    "receipt": item.get("receipt"),
+                    "proof_verified": bool(item.get("receipt") and item["receipt"].get("body_sha256") == item["body_sha256"]),
+                }
+                for item in items
+            ],
+        }
+
     if scenarios is not None:
         @app.get("/scenarios")
         async def scenario_page():

@@ -1,0 +1,5 @@
+{"timestamp": "2026-11-20T12:07:00Z", "host": "api-01", "cpu_pct": 42.0}
+This is not a JSON object {broken
+{"timestamp": "2026-11-20T12:07:10Z", "host": "lb-01", "cpu_pct": 44.0}
+[1, 2, 3]
+{"timestamp": "2026-11-20T12:07:20Z", "host": "db-01", "cpu_pct": 60.0}

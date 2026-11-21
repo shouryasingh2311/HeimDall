@@ -75,7 +75,77 @@ On Windows, this uses the installed Edge or default browser. Browser tests run r
 
 ---
 
-## 5. Architectural & Operations Q&A Reference Guide
+## 5. Multi-Format Telemetry Import & Dry-Run Validation
+
+Heimdal supports universal ingestion across JSONL, JSON (arrays and `{"records": [...]}` envelopes), CSV/TSV with header rows, and gzip versions (`.gz`) of each.
+
+### 5.1 Dry-Run Inspection (`inspect_input`)
+Validate format autodetection, alias resolution, timestamp UTC normalization, and ratio scaling without sending any bytes across the network or modifying state:
+
+```powershell
+# Inspect a local JSONL file
+.venv/Scripts/python -m backend.collector.inspect_input tests/scenarios/fixtures/sample.jsonl
+
+# Inspect a compressed CSV file with custom field mapping
+.venv/Scripts/python -m backend.collector.inspect_input tests/scenarios/fixtures/custom_mapped.csv --map tests/scenarios/fixtures/custom_map.yaml
+```
+
+If the file is missing or empty, `inspect_input` fails loudly with exit code `1` and an explicit diagnostic error message.
+
+### 5.2 Starting the Collector with Multi-Format Files
+```powershell
+# Ingest CSV telemetry
+.venv/Scripts/python -m backend.collector.daemon --runtime .heimdal/scenario-demo --input data/system_metrics.csv
+
+# Ingest with explicit column alias mapping
+.venv/Scripts/python -m backend.collector.daemon --runtime .heimdal/scenario-demo --input data/legacy.tsv --map config/mapping.yaml
+```
+
+### 5.3 Streaming from Live Third-Party / Organizer HTTP(S) Endpoints
+```powershell
+# Continuously poll or stream from an external HTTP(S) telemetry feed
+.venv/Scripts/python -m backend.collector.daemon --runtime .heimdal/scenario-demo --organizer-url https://telemetry.internal.company.com/feed
+```
+
+---
+
+## 6. Telemetry & Proof Export Operations
+
+Heimdal provides zero-leakage exports for auditors, judges, and downstream analytics. Only central allow-listed metadata and local egress receipts are ever exported.
+
+### 6.1 Export via Operations Dashboard
+1. Open <https://localhost:8443> and sign in with the operator token.
+2. Click the **Export** button in the top navigation bar.
+3. Choose your export target:
+   - **Full Bundle (.zip)**: All metadata tables and incident reports in one archive.
+   - **Metrics Telemetry (CSV / JSON)**: Timeseries of allow-listed system metrics.
+   - **Health Transitions (CSV / JSON)**: History of health state transitions and reason codes.
+   - **AIOps Incidents (Report .md / JSON)**: Correlated incident dossiers with z-scores and evidence ratings.
+   - **Remediation Audit (CSV / JSON)**: Execution records of automated/manual actions.
+   - **Local Egress Proof (JSON)**: Cryptographic SHA-256 wire proof directly from the local edge collector.
+
+### 6.2 Export via Central SaaS CLI (`backend.saas.export`)
+```powershell
+# Export all telemetry as a ZIP bundle
+.venv/Scripts/python -m backend.saas.export --runtime .heimdal/scenario-demo --tenant alpha --table bundle --output heimdal_export.zip
+
+# Export incidents as a human-readable Markdown report
+.venv/Scripts/python -m backend.saas.export --runtime .heimdal/scenario-demo --tenant alpha --table incidents --format markdown --output incidents.md
+
+# Export metrics as CSV within a specific time window
+.venv/Scripts/python -m backend.saas.export --runtime .heimdal/scenario-demo --tenant alpha --table metrics --format csv --output metrics.csv --from 2026-11-20T00:00:00Z --to 2026-11-21T00:00:00Z
+```
+
+### 6.3 Local Collector Cryptographic Egress Proof Export (`backend.collector.export_proof`)
+Export the local outbox cryptographic egress proof to verify that exact wire bytes match SaaS receipts bit for bit:
+
+```powershell
+.venv/Scripts/python -m backend.collector.export_proof --runtime .heimdal/scenario-demo --tenant alpha --output egress_proof.json
+```
+
+---
+
+## 7. Architectural & Operations Q&A Reference Guide
 
 ### Q1: Exactly what data leaves the local environment, and what stays behind?
 > Raw logs, usernames, real IP addresses and secrets stay local. Approved metadata includes typed measurements, UTC timestamps, HMAC pseudonyms, collector health and aggregated threat summaries.
