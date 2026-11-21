@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager, suppress
 import json
 import os
 from pathlib import Path
+import sys
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
@@ -342,10 +343,33 @@ def main():
     args = parser.parse_args()
     app = create_app(read_settings(args.runtime / "saas.json", ServerSettings),
                      args.runtime / "saas.sqlite", args.dashboard)
-    uvicorn.run(
-        app, host="127.0.0.1", port=args.port, ssl_keyfile=str(args.runtime / "server.key"),
-        ssl_certfile=str(args.runtime / "server.pem"), proxy_headers=False,
-    )
+
+    if sys.platform == "win32":
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        orig_handler = loop.get_exception_handler()
+
+        def _ignore_win_reset(ev_loop, context):
+            exc = context.get("exception")
+            if isinstance(exc, ConnectionResetError) or (isinstance(exc, OSError) and getattr(exc, "winerror", None) == 10054):
+                return
+            if orig_handler:
+                orig_handler(ev_loop, context)
+            else:
+                ev_loop.default_exception_handler(context)
+
+        loop.set_exception_handler(_ignore_win_reset)
+        config = uvicorn.Config(
+            app, host="127.0.0.1", port=args.port, ssl_keyfile=str(args.runtime / "server.key"),
+            ssl_certfile=str(args.runtime / "server.pem"), proxy_headers=False,
+        )
+        server = uvicorn.Server(config)
+        loop.run_until_complete(server.serve())
+    else:
+        uvicorn.run(
+            app, host="127.0.0.1", port=args.port, ssl_keyfile=str(args.runtime / "server.key"),
+            ssl_certfile=str(args.runtime / "server.pem"), proxy_headers=False,
+        )
 
 
 if __name__ == "__main__":
