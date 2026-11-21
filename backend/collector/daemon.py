@@ -6,6 +6,7 @@ from contextlib import AsyncExitStack, asynccontextmanager
 from dataclasses import replace
 from hashlib import sha256
 import logging
+import os
 from pathlib import Path
 from uuid import uuid4
 
