@@ -52,7 +52,7 @@ export class HeimdalApiClient {
 
   constructor(initialConfig?: Partial<ApiClientConfig>) {
     this.config = {
-      baseUrl: initialConfig?.baseUrl || (typeof window !== 'undefined' ? (window as unknown as { __VITE_API_BASE__?: string }).__VITE_API_BASE__ || '' : ''),
+      baseUrl: initialConfig?.baseUrl ?? (typeof window !== 'undefined' ? (window as unknown as { __VITE_API_BASE__?: string }).__VITE_API_BASE__ || '' : ''),
       tenantId: initialConfig?.tenantId || 'tenant-alpha',
       operatorToken: initialConfig?.operatorToken || '',
     };

@@ -14,7 +14,7 @@ export interface UseFleetPollingResult {
   setFixtureMode: (enabled: boolean) => void;
 }
 
-export function useFleetPolling(pollIntervalMs = 2000): UseFleetPollingResult {
+export function useFleetPolling(pollIntervalMs = 2000, onAccessDenied?: (message: string) => void): UseFleetPollingResult {
   const [data, setData] = useState<FleetResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<ApiError | null>(null);
@@ -46,12 +46,16 @@ export function useFleetPolling(pollIntervalMs = 2000): UseFleetPollingResult {
           return; // Ignore aborted requests
         }
         const apiErr = err instanceof ApiError ? err : new ApiError(0, 'UNKNOWN', '/api/v1/fleet', (err as Error).message);
+        if (onAccessDenied && (apiErr.status === 401 || apiErr.status === 403)) {
+          onAccessDenied('Your operator credentials are no longer accepted. Sign in again.');
+          return;
+        }
         setError(apiErr);
         setIsLoading(false);
         // Do NOT silently replace data with mock fixture on error!
       }
     }
-  }, []);
+  }, [onAccessDenied]);
 
   useEffect(() => {
     isMountedRef.current = true;

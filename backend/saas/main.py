@@ -323,8 +323,13 @@ def create_app(settings: ServerSettings, db_path: Path, dashboard: Path | None =
         app.mount("/assets", StaticFiles(directory=dashboard / "assets"), name="dashboard-assets")
 
         @app.get("/", include_in_schema=False)
+        @app.get("/login", include_in_schema=False)
         async def dashboard_index():
             return FileResponse(index, headers={"Cache-Control": "no-cache"})
+
+        @app.get("/banner.png", include_in_schema=False)
+        async def dashboard_banner():
+            return FileResponse(dashboard / "banner.png")
 
         favicon = dashboard / "favicon.svg"
         if favicon.is_file():

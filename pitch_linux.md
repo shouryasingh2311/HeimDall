@@ -94,7 +94,7 @@ python -m backend.collector.daemon --runtime .heimdal/demo --scenarios
 
 ### Minute 1: Fleet & Real-Time Performance Benchmarks
 1. Open **`https://localhost:8443`** in your browser.
-2. In the top connection bar, enter:
+2. On the operator sign-in page, enter:
    * **Tenant ID:** `tenant-alpha`
    * **Operator Token:** Copy token from `.heimdal/demo/operator-alpha.json` (or terminal startup banner)
    * Click **Connect dashboard**.

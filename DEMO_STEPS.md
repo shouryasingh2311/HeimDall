@@ -36,7 +36,7 @@ chmod +x start.sh
 ### Feature 1: Fleet Overview & 4-Tier Health State Engine
 **Location:** Central Dashboard (`https://localhost:8443`) $\to$ **Fleet & Health State** tab
 
-1. Enter `tenant-alpha` and your Operator Token in the top connection bar, then click **Connect dashboard**.
+1. On the sign-in page, enter `tenant-alpha` and your operator token, then click **Connect dashboard**.
 2. **What to point out:**
    - **5 Distributed Nodes:** `lb-01` (Load Balancer), `api-01` (Gateway), `auth-01` (Security), `db-01` (Database), `worker-01` (Background Processing).
    - **4 Discrete Health States:**
@@ -160,9 +160,9 @@ chmod +x start.sh
 ---
 
 ### Feature 10: Strict Multi-Tenant Cryptographic Isolation
-**Location:** Top bar $\to$ Click **"Scope Settings"** or Tenant ID
+**Location:** Dashboard header → **Sign out**
 
-1. In the top bar, change the Tenant ID from `tenant-alpha` to `tenant-beta`.
+1. Sign out of `tenant-alpha`, then enter `tenant-beta` on the sign-in page.
 2. Enter the Operator Token for Tenant Beta from `.heimdal/demo/operator-beta.json`.
 3. Click **Connect dashboard**:
    - The browser cache and local render state are immediately purged.

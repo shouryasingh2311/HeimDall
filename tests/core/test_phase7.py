@@ -174,6 +174,7 @@ def verify_scenario_dashboard(client, alpha, beta):
         open_scenarios(alpha)
         expect(page.get_by_text("8 / 8", exact=True)).to_be_visible()
         expect(page.get_by_text("Operator-approved simulation and rollback (V11)", exact=True)).to_be_visible()
+        page.get_by_role("button", name="Sign out").click()
         open_scenarios(beta)
         expect(page.get_by_text("No scenario verification results reported yet.", exact=False)).to_be_visible()
         expect(page.get_by_text("8 / 8", exact=True)).to_have_count(0)
@@ -187,5 +188,6 @@ def verify_scenario_dashboard(client, alpha, beta):
         for route in pending_scenarios:
             forward(route)
         expect(page.get_by_text("No scenario verification results reported yet.", exact=False)).to_be_visible()
+        page.get_by_role("button", name="Sign out").click()
         open_scenarios(alpha)
         expect(page.get_by_text("8 / 8", exact=True)).to_be_visible()

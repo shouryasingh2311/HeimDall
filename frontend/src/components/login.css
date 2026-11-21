@@ -1,0 +1,40 @@
+.login-page {
+  display: grid;
+  place-items: center;
+  min-height: 100svh;
+  padding: clamp(18px, 5vw, 72px);
+}
+.login-card {
+  width: min(100%, 980px);
+  display: grid;
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
+  background: var(--surface);
+  border: var(--rim);
+  border-radius: 22px;
+  box-shadow: var(--raised);
+  overflow: hidden;
+}
+.login-banner {
+  background: #101319;
+  display: grid;
+  place-items: center;
+  padding: clamp(22px, 3.5vw, 48px);
+}
+.login-banner img { display: block; width: 100%; height: auto; }
+.login-panel { padding: clamp(26px, 4vw, 54px); min-width: 0; }
+.login-panel h1 { font: 650 clamp(30px, 3.4vw, 42px)/1.1 var(--display); letter-spacing: -.047em; }
+.login-panel > p { margin: 9px 0 26px; max-width: 33ch; color: var(--muted); }
+.login-panel form { display: grid; gap: 7px; }
+.login-panel label { font-weight: 600; }
+.login-panel .input-text, .login-panel button[type=submit] { min-height: 44px; }
+.login-token-label { margin-top: 8px; display: flex; align-items: center; justify-content: space-between; }
+.login-api { margin: 6px 0 12px; font-size: 13px; }
+.login-api summary { cursor: pointer; padding: 6px 0; width: fit-content; color: var(--link); }
+.login-api label { display: block; margin: 8px 0 4px; }
+.login-panel .connection-error { margin: 0 0 6px; }
+.session-tenant { color: var(--ink); font: 13px var(--mono); overflow-wrap: anywhere; }
+@media (max-width: 700px) {
+  .login-card { grid-template-columns: minmax(0, 1fr); max-width: 450px; }
+  .login-banner { padding: 20px; }
+  .login-banner img { width: min(78%, 260px); }
+}

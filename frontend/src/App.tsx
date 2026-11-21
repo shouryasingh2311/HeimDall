@@ -1,6 +1,6 @@
 import { CollectorLink } from './components/CollectorLink';
 import { useWorkspaceMotion } from './hooks/useWorkspaceMotion';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFleetPolling } from './hooks/useFleetPolling';
 import { ConnectionBanner } from './components/ConnectionBanner';
 import { BufferStatusCard } from './components/BufferStatusCard';
@@ -9,7 +9,7 @@ import { PayloadInspector } from './components/PayloadInspector';
 import { TransitionsView } from './components/TransitionsView';
 import { IncidentDetailView } from './components/IncidentDetailView';
 import { ScenarioResultsView } from './components/ScenarioResultsView';
-import { OperatorSettingsModal } from './components/OperatorSettingsModal';
+import { LoginPage } from './components/LoginPage';
 import { apiClient } from './api/client';
 import { BenchmarkPanel } from './components/BenchmarkPanel';
 import { DevDashboard } from './components/DevDashboard';
@@ -24,13 +24,25 @@ const views = [
 type TabKey = 'fleet' | 'inspector' | 'incidents' | 'scenarios';
 
 export function App() {
-  const [session, setSession] = useState(0);
-  const resetDashboard = useCallback(() => setSession((value) => value + 1), []);
+  const [signedIn, setSignedIn] = useState(false);
+  const [loginNotice, setLoginNotice] = useState('');
+  const signOut = useCallback((message = '') => {
+    apiClient.setTenant(apiClient.getTenantId(), '');
+    setLoginNotice(message);
+    setSignedIn(false);
+  }, []);
 
-  return <Dashboard key={session} onCredentialsChanged={resetDashboard} />;
+  useEffect(() => {
+    window.history.replaceState(null, '', signedIn ? '/' : '/login');
+    document.title = signedIn ? 'Heimdal | Operations Dashboard' : 'Heimdal | Operator sign-in';
+  }, [signedIn]);
+
+  return signedIn
+    ? <Dashboard onSignOut={signOut} />
+    : <LoginPage notice={loginNotice} onSuccess={() => setSignedIn(true)} />;
 }
 
-function Dashboard({ onCredentialsChanged }: { onCredentialsChanged: () => void }) {
+function Dashboard({ onSignOut }: { onSignOut: (message?: string) => void }) {
   const [standardTab, setStandardTab] = useState<TabKey>('fleet');
   const [devMode, setDevMode] = useState(false);
   const activeTab = devMode ? 'dev' : standardTab;
@@ -40,7 +52,6 @@ function Dashboard({ onCredentialsChanged }: { onCredentialsChanged: () => void 
   };
   const workspace = useRef<HTMLElement>(null);
   useWorkspaceMotion(workspace, activeTab);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [inspectPayloadUuid, setInspectPayloadUuid] = useState<string | undefined>(undefined);
   const [targetIncidentId, setTargetIncidentId] = useState<string | undefined>(undefined);
 
@@ -53,7 +64,7 @@ function Dashboard({ onCredentialsChanged }: { onCredentialsChanged: () => void 
     serverStatus,
     refreshNow,
     setFixtureMode,
-  } = useFleetPolling(2000);
+  } = useFleetPolling(2000, onSignOut);
 
   const handleInspectPayload = (uuid: string) => {
     setInspectPayloadUuid(uuid);
@@ -113,16 +124,15 @@ function Dashboard({ onCredentialsChanged }: { onCredentialsChanged: () => void 
               <input type="checkbox" role="switch" data-theme-switch defaultChecked={document.documentElement.dataset.theme === 'dark'} />
               Dark mode
             </label>
-            <button className="scope-button" onClick={() => setIsSettingsOpen(true)} aria-label="Open tenant scope settings">
-              <span className="scope-symbol" aria-hidden="true">⌘</span> {apiClient.getTenantId()} <span aria-hidden="true">⌄</span>
-            </button>
+            <span className="session-tenant" title="Signed-in tenant">{apiClient.getTenantId()}</span>
+            <button className="action-btn" onClick={() => onSignOut()}>Sign out</button>
           </div>
         </header>
         <main ref={workspace} id="workspace" tabIndex={-1} className="heimdal-main-content">
           <div className="page-title"><h1>{view.label}</h1><p>{view.description}</p></div>
           <ConnectionBanner serverStatus={serverStatus} error={error} lastSyncUtc={lastSyncUtc}
             isFixtureMode={isFixtureMode} onToggleFixtureMode={setFixtureMode} onRefresh={refreshNow}
-            isLoading={isLoading} onCredentialsChanged={onCredentialsChanged} />
+            isLoading={isLoading} />
           {devMode && <DevDashboard key={String(isFixtureMode)} fleet={data} fixture={isFixtureMode} onInspect={handleInspectPayload} />}
           {activeTab === 'fleet' && (
             <div
@@ -196,12 +206,6 @@ function Dashboard({ onCredentialsChanged }: { onCredentialsChanged: () => void 
         <footer className="heimdal-footer">Heimdal Observability <span>Central workspace · Metadata only</span></footer>
       </div>
 
-      {/* Operator Settings & Scope Modal */}
-      <OperatorSettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        onSave={onCredentialsChanged}
-      />
     </div>
   );
 }
