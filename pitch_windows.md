@@ -1,7 +1,7 @@
-# 🛡️ HeimDall: Judge Demo & Windows PowerShell Pitch Playbook
+# 🛡️ HeimDall: Technical Demonstration & Windows Presentation Playbook
 
 > **High-Impact Presentation & Technical Demonstration Guide for Windows**  
-> *Targeted for Hackathon Judges evaluating the 24-Hour End-to-End Secure AIOps Observability Challenge.*
+> *Production-Grade Privacy-First Distributed Observability and AIOps Platform.*
 
 ---
 
@@ -98,7 +98,10 @@ python -m backend.collector.daemon --runtime .heimdal\demo --scenarios
 
 ### Minute 1: Fleet & Real-Time Performance Benchmarks
 1. Open **`https://localhost:8443`** in Edge or Chrome.
-2. Enter Tenant ID `alpha` and copy the operator token from `.heimdal\demo\operator-alpha.json`, then click **Connect**.
+2. In the top connection bar, enter:
+   * **Tenant ID:** `tenant-alpha`
+   * **Operator Token:** Copy token from `.heimdal\demo\operator-alpha.json` (or terminal startup banner)
+   * Click **Connect dashboard**.
 3. **Show the Fleet Overview:**
    * Point out the 5 nodes across the topology (`lb-01`, `api-01`, `db-01`, `worker-01`, `worker-02`).
    * Show the **4 discrete health states**: `Excellent` (Nominal), `Good` (Minor jitter), `Fair` (High load/stale), `Poor` (Expired/outage).
@@ -163,8 +166,8 @@ python -m backend.collector.daemon --runtime .heimdal\demo --scenarios
 1. **Local Outbox Buffering (Scenario 2):**
    * Explain: *"During a 30-second network cut, the collector buffers events into a durable SQLite WAL outbox on disk. Upon reconnect, all 75 queued events flush with zero loss and zero duplicates."*
 2. **Strict Tenant Separation:**
-   * Open **Operator Settings**, change Tenant ID to `beta`, and click Connect.
-   * The fleet and incidents for Tenant Alpha instantly disappear (returns 404). Switch back to `alpha` to restore visibility.
+   * Open **Operator Settings**, change Tenant ID to `tenant-beta`, and click Connect.
+   * The fleet and incidents for Tenant Alpha instantly disappear (returns 404). Switch back to `tenant-alpha` to restore visibility.
 
 ---
 
@@ -185,7 +188,7 @@ $token = (Get-Content .heimdal\demo\operator-alpha.json | ConvertFrom-Json).toke
 
 curl.exe --cacert .heimdal\demo\ca.pem `
   -H "Authorization: Bearer $token" `
-  -H "X-Tenant-ID: alpha" `
+  -H "X-Tenant-ID: tenant-alpha" `
   https://localhost:8443/api/v1/fleet
 
 # 4. Query live local collector audit records:
@@ -208,4 +211,4 @@ python scripts\verification\run_scenarios.py --runtime .heimdal\demo
 | **Q3: What happens when SaaS is unreachable?** | *"The collector enqueues approved payloads into a local SQLite WAL outbox. Retries use exponential backoff and stable UUIDs. After reconnecting, SaaS de-duplicates via SHA-256 wire digests, guaranteeing zero data loss and zero duplicate counts."* |
 | **Q4: How does your AIOps distinguish real anomalies from normal spikes?** | *"We enforce a 10-sample warm-up window, a variance floor to prevent micro-jitter false alarms, and require two consecutive statistical breaches ($z > 3.0$) before raising an alert. Single transient spikes are suppressed."* |
 | **Q5: What safeguards exist before automated remediation executes?** | *"We enforce human-in-the-loop authorization, hardcoded `simulation: true`, rate limits of 2 actions per hour per target, an atomic pre-action snapshot, and one-click rollback."* |
-| **Q6: What are the current system limitations?** | *"As disclosed in our Runbook, our demo source is synthetic because external organizer stream formats vary; physical multi-region residency and hardware-level container scaling would require production cloud API bindings."* |
+| **Q6: How does the system handle diverse deployment environments (Edge, IoT, Cloud)?** | *"HeimDall separates lightweight data collection from central SaaS analytics. Edge nodes run the single-file local daemon with an embedded SQLite WAL buffer, needing only Python or a tiny Docker container, while the central SaaS scales horizontally to process allow-listed metadata."* |

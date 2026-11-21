@@ -81,13 +81,13 @@ $dashboardAbs = Join-Path $repoDir "frontend\dist"
 $saasJob = Start-Job -ScriptBlock {
     param($py, $repo, $dir, $dash)
     Set-Location $repo
-    & $py -m backend.saas.main --runtime $dir --dashboard $dash 2>&1
+    & $py -m backend.saas.main --runtime $dir --dashboard $dash 2>&1 | Out-String -Stream
 } -ArgumentList $venvPython, $repoDir, $runtimeAbs, $dashboardAbs
 
 $collectorJob = Start-Job -ScriptBlock {
     param($py, $repo, $dir)
     Set-Location $repo
-    & $py -m backend.collector.daemon --runtime $dir --scenarios 2>&1
+    & $py -m backend.collector.daemon --runtime $dir --scenarios 2>&1 | Out-String -Stream
 } -ArgumentList $venvPython, $repoDir, $runtimeAbs
 
 Start-Sleep -Seconds 2
@@ -96,7 +96,7 @@ Start-Process "https://localhost:8443"
 $ErrorActionPreference = "Continue"
 
 function Write-CleanOutput($job) {
-    $records = Receive-Job $job -ErrorAction SilentlyContinue
+    $records = Receive-Job $job 2>&1
     if ($records) {
         foreach ($r in $records) {
             if ($r -is [System.Management.Automation.ErrorRecord]) {
