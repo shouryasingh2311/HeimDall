@@ -12,6 +12,7 @@ import { ScenarioResultsView } from './components/ScenarioResultsView';
 import { OperatorSettingsModal } from './components/OperatorSettingsModal';
 import { apiClient } from './api/client';
 import { BenchmarkPanel } from './components/BenchmarkPanel';
+import { DevDashboard } from './components/DevDashboard';
 
 const views = [
   { key: 'fleet', label: 'Fleet overview', name: 'Fleet & Health State', description: 'Collector health, source activity, and the edge outbox.' },
@@ -30,7 +31,13 @@ export function App() {
 }
 
 function Dashboard({ onCredentialsChanged }: { onCredentialsChanged: () => void }) {
-  const [activeTab, setActiveTab] = useState<TabKey>('fleet');
+  const [standardTab, setStandardTab] = useState<TabKey>('fleet');
+  const [devMode, setDevMode] = useState(false);
+  const activeTab = devMode ? 'dev' : standardTab;
+  const setActiveTab = (key: TabKey) => {
+    setDevMode(false);
+    setStandardTab(key);
+  };
   const workspace = useRef<HTMLElement>(null);
   useWorkspaceMotion(workspace, activeTab);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -58,7 +65,9 @@ function Dashboard({ onCredentialsChanged }: { onCredentialsChanged: () => void 
     setActiveTab('incidents');
   };
 
-  const view = views.find((item) => item.key === activeTab)!;
+  const view = devMode
+    ? { label: 'Developer dashboard', description: 'Source telemetry, collector outboxes, and the tenant event log.' }
+    : views.find((item) => item.key === standardTab)!;
   return (
     <div className="heimdal-app-shell">
       <a className="skip-link" href="#workspace">Skip to workspace</a>
@@ -67,7 +76,7 @@ function Dashboard({ onCredentialsChanged }: { onCredentialsChanged: () => void 
         <div className="rail-label">Workspace</div>
         <nav className="tab-navigation" role="tablist" aria-label="Dashboard operational views"
           onKeyDown={(event) => {
-            const index = views.findIndex((item) => item.key === activeTab);
+            const index = views.findIndex((item) => item.key === standardTab);
             const next = event.key === 'Home' ? 0 : event.key === 'End' ? views.length - 1
               : ['ArrowRight', 'ArrowDown'].includes(event.key) ? (index + 1) % views.length
               : ['ArrowLeft', 'ArrowUp'].includes(event.key) ? (index + views.length - 1) % views.length : -1;
@@ -79,7 +88,7 @@ function Dashboard({ onCredentialsChanged }: { onCredentialsChanged: () => void 
           {views.map((item) => (
             <button key={item.key} type="button" role="tab" id={`tab-${item.key}`}
               aria-selected={activeTab === item.key} aria-controls={`panel-${item.key}`}
-              aria-label={item.name} tabIndex={activeTab === item.key ? 0 : -1}
+              aria-label={item.name} tabIndex={standardTab === item.key ? 0 : -1}
               className="tab-btn" onClick={() => setActiveTab(item.key)}>
               <span aria-hidden="true" className={`nav-icon icon-${item.key}`} />
               {item.label}
@@ -97,6 +106,10 @@ function Dashboard({ onCredentialsChanged }: { onCredentialsChanged: () => void 
           <span>Operations <span className="slash">/</span> <strong>{view.label}</strong></span>
           <div className="workspace-tools">
             <label className="theme-switch">
+              <input type="checkbox" role="switch" checked={devMode} onChange={(event) => setDevMode(event.target.checked)} />
+              Dev
+            </label>
+            <label className="theme-switch">
               <input type="checkbox" role="switch" data-theme-switch defaultChecked={document.documentElement.dataset.theme === 'dark'} />
               Dark mode
             </label>
@@ -110,6 +123,7 @@ function Dashboard({ onCredentialsChanged }: { onCredentialsChanged: () => void 
           <ConnectionBanner serverStatus={serverStatus} error={error} lastSyncUtc={lastSyncUtc}
             isFixtureMode={isFixtureMode} onToggleFixtureMode={setFixtureMode} onRefresh={refreshNow}
             isLoading={isLoading} onCredentialsChanged={onCredentialsChanged} />
+          {devMode && <DevDashboard key={String(isFixtureMode)} fleet={data} fixture={isFixtureMode} onInspect={handleInspectPayload} />}
           {activeTab === 'fleet' && (
             <div
               id="panel-fleet"

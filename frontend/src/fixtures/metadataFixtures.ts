@@ -250,6 +250,7 @@ export const MOCK_PAYLOAD_SAMPLE: PayloadDetail = {
 };
 
 export const MOCK_PAYLOADS_STORE: Record<string, PayloadDetail> = {
+  ...Object.fromEntries(Object.values(MOCK_SOURCE_METRICS_STORE).flat().map((sample) => [sample.payload_uuid, sample])),
   'e2b3c4d5-6789-5000-8000-abcdef123456': MOCK_PAYLOAD_SAMPLE,
   'uuid-scen2-01': {
     payload_uuid: 'uuid-scen2-01',
