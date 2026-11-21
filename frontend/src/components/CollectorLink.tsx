@@ -10,7 +10,7 @@ function appearance() {
 }
 
 export function CollectorLink({ page, className, children }: {
-  page: 'audit' | 'scenarios';
+  page: 'audit' | 'scenarios' | 'logs';
   className?: string;
   children: ReactNode;
 }) {

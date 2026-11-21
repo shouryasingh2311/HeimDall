@@ -14,10 +14,12 @@ from fastapi.responses import FileResponse, Response
 from uuid import UUID
 
 from backend.collector.demo_source import RawEvent
+from backend.collector.adapters.auto_adapter import MAX_FILE_BYTES, LogImportError
+from backend.collector.log_review import analyze_log
 from backend.collector.scenario_runner import ScenarioBusy, ScenarioRunner
 from backend.collector.scrubber import scrub_preview
 from backend.collector.transport import DELIVERY_ERRORS
-from backend.shared.config import CollectorSettings
+from backend.shared.config import CollectorSettings, HealthPolicy
 from backend.shared.models import MetadataPayload
 from backend.shared.scenarios import ScenarioNumber
 
@@ -106,6 +108,8 @@ def create_inspector(
     app = FastAPI(openapi_url=None, docs_url=None, redoc_url=None, lifespan=lifespan)
     hosts = {f"localhost:{settings.local_port}", f"127.0.0.1:{settings.local_port}"}
     expected = f"Bearer {settings.local_token.get_secret_value()}".encode()
+    log_import = asyncio.Lock()
+    replay_policy = HealthPolicy()
 
     @app.middleware("http")
     async def restrict_request(request: Request, call_next):
@@ -145,6 +149,32 @@ def create_inspector(
     @app.get("/audit.js")
     async def script():
         return Response(JS, media_type="text/javascript")
+
+    @app.get("/logs")
+    async def log_review_page():
+        return FileResponse(STATIC / "logs.html", media_type="text/html")
+
+    @app.get("/logs.js")
+    async def log_review_script():
+        return FileResponse(STATIC / "logs.js", media_type="text/javascript")
+
+    @app.post("/api/local/log-review")
+    async def import_logs(request: Request):
+        check_token(request)
+        if request.headers.get("content-type") != "application/octet-stream":
+            raise HTTPException(415, "Send a log file as application/octet-stream.")
+        if log_import.locked():
+            raise HTTPException(409, "A log import is already running.")
+        async with log_import:
+            body = bytearray()
+            async for chunk in request.stream():
+                if len(body) + len(chunk) > MAX_FILE_BYTES:
+                    raise HTTPException(413, "The file must be at most 5 MiB.")
+                body.extend(chunk)
+            try:
+                return await analyze_log(bytes(body), settings, replay_policy)
+            except LogImportError as error:
+                raise HTTPException(422, str(error)) from None
 
     @app.get("/api/local/audit")
     async def records(request: Request, payload_uuid: str | None = None):

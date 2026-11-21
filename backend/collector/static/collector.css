@@ -16,6 +16,7 @@ input:not([type="checkbox"]),button { min-height: 44px; font: inherit; padding: 
 input { font: var(--type-body)/1.4 var(--mono); width: 100%; min-width: 0; border: 1px solid var(--strong-line); background: var(--surface); box-shadow: var(--inset); color: var(--ink); }
 button { box-shadow: var(--control); border: 1px solid var(--accent); color: var(--on-accent); background: var(--accent); cursor: pointer; font-weight: 550; }
 button:hover { background: var(--accent-hover); }
+button:disabled { cursor: default; opacity: .55; }
 :focus-visible { outline: 3px solid var(--link); outline-offset: 3px; }
 .comparison,.runner { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 22px; }
 section { background: var(--surface); align-self: start; margin-top: 24px; padding: 20px; border: var(--rim); border-radius: 18px; box-shadow: var(--raised); min-width: 0; }
