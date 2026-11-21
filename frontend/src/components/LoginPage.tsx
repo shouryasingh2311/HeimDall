@@ -1,6 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { ApiError, apiClient, HeimdalApiClient } from '../api/client';
 import { FluxLines } from './FluxLines';
+import { AnimatedButton } from './AnimatedButton';
 import './login.css';
 
 export function LoginPage({ notice, onSuccess }: { notice: string; onSuccess: () => void }) {
@@ -78,7 +79,9 @@ export function LoginPage({ notice, onSuccess }: { notice: string; onSuccess: ()
                 defaultValue={apiClient.getBaseUrl()} placeholder={window.location.origin} />
             </details>
             {error && <p className="connection-error" role="alert">{error}</p>}
-            <button type="submit" className="btn-action-primary" disabled={pending}>{pending ? 'Connecting…' : 'Connect dashboard'}</button>
+            <AnimatedButton type="submit" disabled={pending}>
+              {pending ? 'Connecting…' : 'Connect dashboard'}
+            </AnimatedButton>
           </form>
         </section>
       </div>
