@@ -1,13 +1,32 @@
+@font-face {
+  font-family: "Spectral";
+  src: url("/assets/type/spectral-latin-500-normal.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+}
 .login-page {
+  position: relative;
   display: grid;
   place-items: center;
   min-height: 100svh;
   padding: clamp(18px, 5vw, 72px);
+  overflow: hidden;
+}
+.login-bg-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: auto;
 }
 .login-card {
-  width: min(100%, 980px);
+  position: relative;
+  z-index: 1;
+  width: min(100%, 64rem);
   display: grid;
-  grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   background: var(--surface);
   border: var(--rim);
   border-radius: 22px;
@@ -22,17 +41,24 @@
 }
 .login-banner img { display: block; width: 100%; height: auto; }
 .login-panel { padding: clamp(26px, 4vw, 54px); min-width: 0; }
-.login-panel h1 { font: 650 clamp(30px, 3.4vw, 42px)/1.1 var(--display); letter-spacing: -.047em; }
-.login-panel > p { margin: 9px 0 26px; max-width: 33ch; color: var(--muted); }
+.login-panel h1 {
+  font: 500 clamp(2.5rem, 1.85rem + 2.3vw, 3.5rem)/1.1 "Spectral", Georgia, serif;
+  letter-spacing: -.035em;
+}
+.login-panel > p { margin: .65rem 0 1.75rem; max-width: 36ch; font-size: 1.0625rem; color: var(--muted); }
 .login-panel form { display: grid; gap: 7px; }
-.login-panel label { font-weight: 600; }
+.login-panel label { font: 600 var(--type-label)/1.4 var(--sans); }
 .login-panel .input-text, .login-panel button[type=submit] { min-height: 44px; }
-.login-token-label { margin-top: 8px; display: flex; align-items: center; justify-content: space-between; }
-.login-api { margin: 6px 0 12px; font-size: 13px; }
-.login-api summary { cursor: pointer; padding: 6px 0; width: fit-content; color: var(--link); }
+.login-panel .input-text { font: var(--type-body)/1.45 var(--mono); }
+.login-panel .input-text::placeholder { font-family: var(--sans); }
+.login-panel button[type=submit] { font: 600 var(--type-body)/1.4 var(--sans); }
+.login-token-label { margin-top: .5rem; display: flex; align-items: center; justify-content: space-between; }
+.login-token-label button { min-height: 44px; min-width: 44px; }
+.login-api { margin: .25rem 0 .625rem; font-size: var(--type-label); }
+.login-api summary { cursor: pointer; padding: .625rem 0; min-height: 44px; width: fit-content; color: var(--link); }
 .login-api label { display: block; margin: 8px 0 4px; }
 .login-panel .connection-error { margin: 0 0 6px; }
-.session-tenant { color: var(--ink); font: 13px var(--mono); overflow-wrap: anywhere; }
+.session-tenant { color: var(--ink); font: var(--type-caption)/1.45 var(--mono); overflow-wrap: anywhere; }
 @media (max-width: 700px) {
   .login-card { grid-template-columns: minmax(0, 1fr); max-width: 450px; }
   .login-banner { padding: 20px; }
