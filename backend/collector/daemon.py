@@ -214,7 +214,7 @@ async def run(args, settings: CollectorSettings) -> bool:
                         await scenarios.close()
 
         app.router.lifespan_context = lifespan
-        server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=settings.local_port, proxy_headers=False))
+        server = uvicorn.Server(uvicorn.Config(app, host=args.host, port=settings.local_port, proxy_headers=False))
         await server.serve()
         return server.started
 
@@ -223,6 +223,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--runtime", type=Path, default=Path(".heimdal/dev"))
     parser.add_argument("--tenant", choices=["alpha", "beta"], default="alpha")
+    parser.add_argument("--host", default=os.getenv("HEIMDAL_HOST", "127.0.0.1"), help="Host interface to bind local inspector")
     source = parser.add_mutually_exclusive_group()
     source.add_argument("--input", type=Path, help="Local RawEvent JSONL file")
     source.add_argument("--organizer", type=Path, help="Organizer JSONL file")

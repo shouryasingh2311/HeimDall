@@ -4,6 +4,7 @@ set -e
 RUNTIME_DIR="${RUNTIME_DIR:-/app/.heimdal/runtime}"
 SAAS_PORT="${SAAS_PORT:-8443}"
 LOCAL_PORT="${LOCAL_PORT:-9001}"
+export HEIMDAL_HOST="${HEIMDAL_HOST:-0.0.0.0}"
 
 # Bootstrap runtime credentials, loopback TLS certificates, and tokens if not already generated
 if [ ! -f "$RUNTIME_DIR/ca.pem" ] || [ ! -f "$RUNTIME_DIR/saas.json" ]; then

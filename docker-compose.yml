@@ -15,6 +15,7 @@ services:
       - RUNTIME_DIR=/app/.heimdal/runtime
       - SAAS_PORT=8443
       - LOCAL_PORT=9001
+      - HEIMDAL_HOST=0.0.0.0
 
 volumes:
   heimdall-runtime:

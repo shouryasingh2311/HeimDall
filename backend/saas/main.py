@@ -339,6 +339,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--runtime", type=Path, default=Path(os.getenv("HEIMDAL_RUNTIME", ".heimdal/dev")))
     parser.add_argument("--port", type=int, default=8443)
+    parser.add_argument("--host", default=os.getenv("HEIMDAL_HOST", "127.0.0.1"), help="Host interface to bind SaaS server")
     parser.add_argument("--dashboard", type=Path, default=os.getenv("HEIMDAL_DASHBOARD_DIR"))
     args = parser.parse_args()
     app = create_app(read_settings(args.runtime / "saas.json", ServerSettings),
@@ -360,14 +361,14 @@ def main():
 
         loop.set_exception_handler(_ignore_win_reset)
         config = uvicorn.Config(
-            app, host="127.0.0.1", port=args.port, ssl_keyfile=str(args.runtime / "server.key"),
+            app, host=args.host, port=args.port, ssl_keyfile=str(args.runtime / "server.key"),
             ssl_certfile=str(args.runtime / "server.pem"), proxy_headers=False,
         )
         server = uvicorn.Server(config)
         loop.run_until_complete(server.serve())
     else:
         uvicorn.run(
-            app, host="127.0.0.1", port=args.port, ssl_keyfile=str(args.runtime / "server.key"),
+            app, host=args.host, port=args.port, ssl_keyfile=str(args.runtime / "server.key"),
             ssl_certfile=str(args.runtime / "server.pem"), proxy_headers=False,
         )
 
