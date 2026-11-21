@@ -1,4 +1,4 @@
-# HeimDall - 1-Command Windows Native Launcher (No Docker required)
+﻿# HeimDall - 1-Command Windows Native Launcher (No Docker required)
 $ErrorActionPreference = "Stop"
 
 Write-Host "==========================================================================" -ForegroundColor Cyan
@@ -67,24 +67,40 @@ Write-Host "====================================================================
 Write-Host "Press Ctrl+C to stop all services." -ForegroundColor Gray
 Write-Host ""
 
-# Automatically open browser to dashboard
-Start-Process "https://localhost:8443"
+# Free ports 8443 and 9001 if occupied from previous runs
+try {
+    Get-NetTCPConnection -LocalPort 8443, 9001 -ErrorAction SilentlyContinue |
+        ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }
+} catch {}
 
-# 6. Launch processes in parallel jobs
+# 6. Launch processes in parallel jobs with explicit working directory and absolute paths
+$repoDir = (Get-Location).Path
+$runtimeAbs = Join-Path $repoDir $runtimeDir
+$dashboardAbs = Join-Path $repoDir "frontend\dist"
+
 $saasJob = Start-Job -ScriptBlock {
-    param($py, $dir)
-    & $py -m backend.saas.main --runtime $dir --dashboard frontend/dist
-} -ArgumentList $venvPython, $runtimeDir
+    param($py, $repo, $dir, $dash)
+    Set-Location $repo
+    & $py -m backend.saas.main --runtime $dir --dashboard $dash 2>&1
+} -ArgumentList $venvPython, $repoDir, $runtimeAbs, $dashboardAbs
 
 $collectorJob = Start-Job -ScriptBlock {
-    param($py, $dir)
-    & $py -m backend.collector.daemon --runtime $dir --scenarios
-} -ArgumentList $venvPython, $runtimeDir
+    param($py, $repo, $dir)
+    Set-Location $repo
+    & $py -m backend.collector.daemon --runtime $dir --scenarios 2>&1
+} -ArgumentList $venvPython, $repoDir, $runtimeAbs
+
+Start-Sleep -Seconds 2
+Start-Process "https://localhost:8443"
+
+$ErrorActionPreference = "Continue"
 
 try {
     while ($true) {
-        Receive-Job $saasJob
-        Receive-Job $collectorJob
+        $saasOutput = Receive-Job $saasJob -ErrorAction SilentlyContinue
+        if ($saasOutput) { $saasOutput | Out-Host }
+        $collectorOutput = Receive-Job $collectorJob -ErrorAction SilentlyContinue
+        if ($collectorOutput) { $collectorOutput | Out-Host }
         Start-Sleep -Seconds 1
     }
 } finally {
