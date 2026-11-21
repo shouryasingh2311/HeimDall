@@ -95,12 +95,23 @@ Start-Process "https://localhost:8443"
 
 $ErrorActionPreference = "Continue"
 
+function Write-CleanOutput($job) {
+    $records = Receive-Job $job -ErrorAction SilentlyContinue
+    if ($records) {
+        foreach ($r in $records) {
+            if ($r -is [System.Management.Automation.ErrorRecord]) {
+                Write-Host $r.Exception.Message
+            } else {
+                Write-Host $r
+            }
+        }
+    }
+}
+
 try {
     while ($true) {
-        $saasOutput = Receive-Job $saasJob -ErrorAction SilentlyContinue
-        if ($saasOutput) { $saasOutput | Out-Host }
-        $collectorOutput = Receive-Job $collectorJob -ErrorAction SilentlyContinue
-        if ($collectorOutput) { $collectorOutput | Out-Host }
+        Write-CleanOutput $saasJob
+        Write-CleanOutput $collectorJob
         Start-Sleep -Seconds 1
     }
 } finally {
