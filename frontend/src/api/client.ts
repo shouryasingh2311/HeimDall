@@ -300,6 +300,9 @@ export class HeimdalApiClient {
       throw new ApiError(res.status, res.statusText, endpoint);
     }
     const blob = await res.blob();
+    if (blob.size === 0) {
+      throw new Error('The server returned an empty export. Please retry.');
+    }
     const disposition = res.headers.get('Content-Disposition');
     let filename = defaultFilename;
     if (disposition) {
@@ -315,7 +318,7 @@ export class HeimdalApiClient {
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
-    window.URL.revokeObjectURL(blobUrl);
+    window.setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1000);
   }
 }
 

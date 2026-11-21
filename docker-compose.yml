@@ -7,7 +7,7 @@ services:
     container_name: heimdall
     ports:
       - "8443:8443"
-      - "9001:9001"
+      - "127.0.0.1:9001:9001"
     volumes:
       - heimdall-runtime:/app/.heimdal
     restart: unless-stopped

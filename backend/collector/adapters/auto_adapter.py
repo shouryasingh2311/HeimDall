@@ -17,14 +17,18 @@ Supports:
 from __future__ import annotations
 
 import csv
+from dataclasses import dataclass
+from itertools import chain
+import math
+import zlib
+from backend.shared.models import Metrics
 from datetime import datetime, timezone
 import gzip
 import io
 import json
 from pathlib import Path
 import re
-from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple
-import urllib.parse
+from typing import Any, AsyncGenerator, Dict, List, Optional
 from uuid import NAMESPACE_URL, uuid5
 
 import httpx
@@ -32,10 +36,7 @@ import httpx
 from backend.collector.demo_source import RawEvent
 
 # Heimdall canonical metric fields
-CANONICAL_METRICS = {
-    "cpu_pct", "memory_pct", "disk_used_pct", "disk_read_bps", "disk_write_bps",
-    "net_tx_bps", "net_rx_bps", "latency_ms", "packet_loss_pct", "service_available", "connectivity"
-}
+CANONICAL_METRICS = set(Metrics.model_fields)
 
 PERCENT_FIELDS = {"cpu_pct", "memory_pct", "disk_used_pct", "packet_loss_pct"}
 
@@ -88,55 +89,42 @@ def load_mapping_file(map_path: str | Path | None) -> Dict[str, str]:
     return result
 
 
-def parse_timestamp_to_utc(val: Any) -> Optional[str]:
-    """Parse ISO string, epoch seconds, or epoch milliseconds to ISO UTC string."""
-    if val is None or val == "":
-        return None
-
-    # Epoch numbers (int or float)
-    if isinstance(val, (int, float)):
-        # Epoch milliseconds (> 1e11)
-        if val > 1e11:
-            dt = datetime.fromtimestamp(val / 1000.0, tz=timezone.utc)
-        else:
-            dt = datetime.fromtimestamp(float(val), tz=timezone.utc)
-        return dt.isoformat(timespec="microseconds").replace("+00:00", "Z")
-
-    val_str = str(val).strip()
-
-    # Numeric string check (epoch in string)
-    try:
-        num = float(val_str)
-        if num > 1e11:
-            dt = datetime.fromtimestamp(num / 1000.0, tz=timezone.utc)
-        elif num > 1e8:  # Epoch seconds after 1973
-            dt = datetime.fromtimestamp(num, tz=timezone.utc)
-            return dt.isoformat(timespec="microseconds").replace("+00:00", "Z")
-    except ValueError:
-        pass
-
-    # ISO 8601 string parsing
-    try:
-        # Replace trailing Z with +00:00 for fromisoformat compatibility
-        clean_iso = val_str.replace("Z", "+00:00")
-        dt = datetime.fromisoformat(clean_iso)
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        else:
-            dt = dt.astimezone(timezone.utc)
-        return dt.isoformat(timespec="microseconds").replace("+00:00", "Z")
-    except ValueError:
-        pass
-
-    # Try common formats
-    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f", "%Y/%m/%d %H:%M:%S"):
-        try:
-            dt = datetime.strptime(val_str, fmt).replace(tzinfo=timezone.utc)
-            return dt.isoformat(timespec="microseconds").replace("+00:00", "Z")
-        except ValueError:
-            pass
-
+def parse_boolean(value):
+    if isinstance(value, bool):
+        return value
+    if type(value) in (int, float):
+        return {0: False, 1: True}.get(value)
+    if isinstance(value, str):
+        return {"true": True, "1": True, "yes": True, "success": True, "ok": True,
+                "false": False, "0": False, "no": False, "failure": False, "failed": False}.get(value.lower().strip())
     return None
+
+
+def parse_timestamp_to_utc(val: Any) -> Optional[str]:
+    """Normalize finite epoch values and ISO timestamps without guessing dates."""
+    if val is None or isinstance(val, bool) or val == "":
+        return None
+    try:
+        number = float(val)
+    except (TypeError, ValueError):
+        number = None
+    if number is not None:
+        if not math.isfinite(number):
+            return None
+        try:
+            dt = datetime.fromtimestamp(number / 1000 if abs(number) >= 1e11 else number, timezone.utc)
+            return dt.isoformat(timespec="microseconds").replace("+00:00", "Z")
+        except (ValueError, OverflowError, OSError):
+            return None
+    try:
+        dt = datetime.fromisoformat(str(val).strip().replace("Z", "+00:00"))
+    except ValueError:
+        try:
+            dt = datetime.strptime(str(val), "%Y/%m/%d %H:%M:%S")
+        except ValueError:
+            return None
+    dt = dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
+    return dt.isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 
 class AutoAdapter:
@@ -172,54 +160,9 @@ class AutoAdapter:
         self.diagnostics: List[Dict[str, Any]] = []
 
     def detect_format(self, path: Optional[Path], header_bytes: bytes) -> str:
-        """Detect format from extension first, then sniffing first bytes."""
-        is_gz = False
-        name = path.name.lower() if path else ""
-
-        if name.endswith(".gz") or header_bytes.startswith(b"\x1f\x8b"):
-            is_gz = True
-            if header_bytes.startswith(b"\x1f\x8b"):
-                try:
-                    header_bytes = gzip.decompress(header_bytes[:8192])
-                except Exception:
-                    pass
-
-        suffix = name[:-3] if name.endswith(".gz") else name
-
-        if suffix.endswith(".jsonl") or suffix.endswith(".ndjson"):
-            return "jsonl.gz" if is_gz else "jsonl"
-        if suffix.endswith(".json"):
-            return "json.gz" if is_gz else "json"
-        if suffix.endswith(".csv"):
-            return "csv.gz" if is_gz else "csv"
-        if suffix.endswith(".tsv"):
-            return "tsv.gz" if is_gz else "tsv"
-
-        # Sniff content
-        text_preview = header_bytes.decode("utf-8", errors="ignore").strip()
-        if not text_preview:
-            return "unknown"
-
-        if text_preview.startswith("[") or text_preview.startswith("{\n  \"records\"") or text_preview.startswith("{\"records\""):
-            return "json.gz" if is_gz else "json"
-
-        # Check if first line parses as JSON dict
-        first_line = text_preview.splitlines()[0].strip()
-        if first_line.startswith("{") and first_line.endswith("}"):
-            try:
-                parsed = json.loads(first_line)
-                if isinstance(parsed, dict):
-                    return "jsonl.gz" if is_gz else "jsonl"
-            except Exception:
-                pass
-
-        # Check delimiter for CSV / TSV
-        if "\t" in first_line and len(first_line.split("\t")) > 1:
-            return "tsv.gz" if is_gz else "tsv"
-        if "," in first_line and len(first_line.split(",")) > 1:
-            return "csv.gz" if is_gz else "csv"
-
-        return "jsonl.gz" if is_gz else "jsonl"
+        """Detect content independently of the filename."""
+        fmt, _ = detect_records(decode_log(header_bytes), self.explicit_map)
+        return fmt + (".gz" if header_bytes.startswith(b"\x1f\x8b") else "")
 
     def _build_field_mapping(self, sample_keys: List[str]) -> Dict[str, str]:
         """Construct the resolved mapping between raw input keys and canonical target keys."""
@@ -235,6 +178,9 @@ class AutoAdapter:
         # 2. For unmapped input fields, guess canonical field using common aliases
         for orig_k in sample_keys:
             if orig_k in resolved:
+                continue
+            if orig_k in CANONICAL_METRICS:
+                resolved[orig_k] = orig_k
                 continue
             k_clean = re.sub(r"[_\-\.]", "", orig_k.lower())
             for canonical, aliases in DEFAULT_ALIASES.items():
@@ -297,8 +243,8 @@ class AutoAdapter:
             )
             source_name = str(raw_host).strip()
             # Normalization: if hostname contains prefix like "tenant-alpha:api-01", strip tenant prefix
-            if ":" in source_name:
-                source_name = source_name.split(":", 1)[1]
+            if source_name.startswith(f"{tenant_id}:"):
+                source_name = source_name[len(tenant_id) + 1:]
             source_key = f"{tenant_id}:{source_name}"
 
         # 3. Input ID generation (ensuring stable ID for replay deduplication)
@@ -333,14 +279,16 @@ class AutoAdapter:
                         if isinstance(val, bool):
                             metrics_dict[target_metric] = val
                         elif isinstance(val, str):
-                            metrics_dict[target_metric] = val.lower() in ("true", "1", "yes")
+                            metrics_dict[target_metric] = parse_boolean(val)
                         elif isinstance(val, (int, float)):
-                            metrics_dict[target_metric] = bool(val)
+                            metrics_dict[target_metric] = parse_boolean(val)
                     else:
                         try:
                             num_val = float(val)
                             # Ratio normalization: if percentage field has 0 < val <= 1.0, scale to 0..100%
-                            if target_metric in PERCENT_FIELDS and 0.0 < num_val <= 1.0:
+                            if (target_metric in PERCENT_FIELDS and 0.0 < num_val <= 1.0
+                                    and target_metric not in raw_dict
+                                    and not (isinstance(nested_metrics, dict) and target_metric in nested_metrics)):
                                 num_val = round(num_val * 100.0, 2)
                             metrics_dict[target_metric] = num_val
                         except (ValueError, TypeError):
@@ -359,9 +307,9 @@ class AutoAdapter:
             if isinstance(raw_succ, bool):
                 auth_success = raw_succ
             elif isinstance(raw_succ, str):
-                auth_success = raw_succ.lower() in ("true", "1", "yes", "success", "ok")
+                auth_success = parse_boolean(raw_succ)
             elif isinstance(raw_succ, (int, float)):
-                auth_success = bool(raw_succ)
+                auth_success = parse_boolean(raw_succ)
 
         source_ip = str(mapped["source_ip"]) if "source_ip" in mapped and mapped["source_ip"] else raw_dict.get("source_ip")
         username = str(mapped["username"]) if "username" in mapped and mapped["username"] else raw_dict.get("username")
@@ -384,26 +332,6 @@ class AutoAdapter:
         self.valid_records_yielded += 1
         return event
 
-    def _open_stream(self) -> Tuple[io.TextIOBase, str]:
-        """Open local file or decompress gzip stream and detect format."""
-        if not self.source_path or not self.source_path.exists():
-            raise FileNotFoundError(f"Source file not found: {self.source_path}")
-
-        raw_bytes = self.source_path.read_bytes()
-        if not raw_bytes:
-            raise ValueError(f"Source file is empty: {self.source_path}")
-
-        fmt = self.detect_format(self.source_path, raw_bytes)
-        self.detected_format = fmt
-
-        if fmt.endswith(".gz") or raw_bytes.startswith(b"\x1f\x8b"):
-            decompressed = gzip.decompress(raw_bytes)
-            stream = io.StringIO(decompressed.decode("utf-8", errors="replace"))
-        else:
-            stream = io.StringIO(raw_bytes.decode("utf-8", errors="replace"))
-
-        return stream, fmt
-
     async def events(self) -> AsyncGenerator[RawEvent, None]:
         """Async generator yielding compliant RawEvents from file or live URL."""
         if self.url:
@@ -411,46 +339,24 @@ class AutoAdapter:
                 yield ev
             return
 
-        stream, fmt = self._open_stream()
-        clean_fmt = fmt.replace(".gz", "")
-
-        if clean_fmt == "json":
-            # Top-level array or envelope
-            content = stream.read().strip()
-            if not content:
-                return
-            data = json.loads(content)
-            records = data if isinstance(data, list) else data.get("records") or data.get("events") or data.get("data") or []
-            for idx, item in enumerate(records, start=1):
-                if isinstance(item, dict):
-                    event = self._normalize_record(item, idx)
-                    if event:
-                        yield event
-                else:
-                    self.malformed_count += 1
-        elif clean_fmt in ("csv", "tsv"):
-            delimiter = "\t" if clean_fmt == "tsv" else ","
-            reader = csv.DictReader(stream, delimiter=delimiter)
-            for idx, row in enumerate(reader, start=1):
-                event = self._normalize_record(row, idx)
-                if event:
-                    yield event
-        else:
-            # JSONL / NDJSON
-            for idx, line in enumerate(stream, start=1):
-                line_s = line.strip()
-                if not line_s or line_s.startswith("#"):
-                    continue
-                try:
-                    record = json.loads(line_s)
-                    if isinstance(record, dict):
-                        event = self._normalize_record(record, idx)
-                        if event:
-                            yield event
-                    else:
-                        self.malformed_count += 1
-                except Exception:
-                    self.malformed_count += 1
+        if self.source_path is None:
+            raise FileNotFoundError("No input file supplied")
+        with self.source_path.open("rb") as stream:
+            body = stream.read(MAX_FILE_BYTES + 1)
+        self.malformed_count = 0
+        fmt, records, malformed = parse_records(body, self)
+        self.detected_format = fmt + (".gz" if body.startswith(b"\x1f\x8b") else "")
+        self.malformed_count += malformed
+        for index, record in records:
+            event = record.event
+            if event is None and record.timestamp:
+                event = self._normalize_record({
+                    "timestamp": record.timestamp, "host": record.source,
+                    "auth_success": record.auth_success, "source_ip": record.source_ip,
+                    "metrics": record.metrics or {},
+                }, index)
+            if event:
+                yield event
 
     async def _events_from_url(self) -> AsyncGenerator[RawEvent, None]:
         """Poll or stream from an external HTTP/HTTPS organizer endpoint."""
@@ -512,3 +418,180 @@ class AutoAdapter:
                             self.malformed_count += 1
             except Exception as e:
                 self.diagnostics.append({"error": "url_fetch_failed", "url": self.url, "detail": str(e)})
+
+
+MAX_FILE_BYTES = 5 * 1024 * 1024
+MAX_RECORDS = 10_000
+LEVELS = {"trace": "debug", "debug": "debug", "info": "info", "notice": "info",
+          "warn": "warning", "warning": "warning", "err": "error", "error": "error",
+          "critical": "critical", "crit": "critical", "fatal": "critical", "alert": "critical",
+          "panic": "critical", "emerg": "critical"}
+SYSLOG_LEVELS = ("critical", "critical", "critical", "error", "warning", "info", "info", "debug")
+TIMESTAMP = re.compile(r"^\d{4}-\d\d-\d\d[T ]\d\d:\d\d:\d\d(?:[.,]\d{1,6})?(?:Z|[+-]\d\d:?\d\d)?")
+SYSLOG_HEADER = re.compile(r"^<(\d{1,3})>\d+\s+(\S+)\s+(\S+)")
+SYSLOG_PRIORITY = re.compile(r"^<(\d{1,3})>")
+TEXT_LEVEL = re.compile(r"^\s*\[?([a-z]+)\b[\]:\s]", re.IGNORECASE)
+HTTP_ACCESS = re.compile(r'"[A-Z]+ [^"\r\n]* HTTP/\d(?:\.\d)?"\s+([1-5]\d\d)\s')
+SSH_FAILURE = re.compile(r"\bFailed (?:password|publickey)\b", re.IGNORECASE)
+SSH_ORIGIN = re.compile(r"\bfrom\s+([\da-f:.]+)(?=\s|$)", re.IGNORECASE)
+ALIASES = {"cpu": "cpu_pct", "memory": "memory_pct", "disk": "disk_used_pct"}
+FIELD_NAMES = set(Metrics.model_fields) | ALIASES.keys() | {
+    "timestamp", "event_time_utc", "time", "@timestamp", "level", "severity", "loglevel", "log_level",
+    "message", "msg", "raw_text", "source_ip", "auth_success", "host", "hostname", "source", "source_key",
+}
+
+
+class LogImportError(ValueError):
+    pass
+
+
+@dataclass
+class LogRecord:
+    timestamp: str | None
+    source: str
+    level: str | None = None
+    metrics: dict | None = None
+    auth_success: bool | None = None
+    source_ip: str | None = None
+    input_id: str | None = None
+    event: RawEvent | None = None
+
+
+def decode_log(body: bytes) -> str:
+    if len(body) > MAX_FILE_BYTES:
+        raise LogImportError("The file must be at most 5 MiB.")
+    if body.startswith(b"\x1f\x8b"):
+        try:
+            with gzip.GzipFile(fileobj=io.BytesIO(body)) as archive:
+                body = archive.read(MAX_FILE_BYTES + 1)
+        except (OSError, EOFError, zlib.error):
+            raise LogImportError("This gzip file could not be read.") from None
+    if len(body) > MAX_FILE_BYTES:
+        raise LogImportError("The uncompressed log must be at most 5 MiB.")
+    try:
+        encoding = "utf-16" if body.startswith((b"\xff\xfe", b"\xfe\xff")) else "utf-8-sig"
+        content = body.decode(encoding)
+    except UnicodeError:
+        raise LogImportError("Export binary logs as text, JSON, JSONL, CSV, or TSV first.") from None
+    if any(ord(character) < 32 and character not in "\r\n\t" for character in content):
+        raise LogImportError("Export binary logs as text, JSON, JSONL, CSV, or TSV first.")
+    if not content.strip():
+        raise LogImportError("The file has no log records.")
+    return content
+
+
+def detect_records(content: str, mapping=None):
+    first = content.lstrip()
+    if first.startswith(("{", "[")):
+        try:
+            document = json.loads(content)
+        except (ValueError, RecursionError):
+            pass
+        else:
+            if isinstance(document, dict):
+                for key in ("logs", "events", "records", "entries", "data"):
+                    if isinstance(document.get(key), list):
+                        return "json", document[key]
+                return "json", [document]
+            return "json", document
+
+    adapter_fields = set(mapping or {}) | {alias.lower() for aliases in DEFAULT_ALIASES.values() for alias in aliases}
+    lines = (line.strip() for line in io.StringIO(content) if line.strip() and not line.lstrip().startswith("#"))
+    header = next(lines, "")
+    if not header:
+        raise LogImportError("The file has no log records.")
+    for delimiter, name in ((",", "csv"), ("\t", "tsv")):
+        if delimiter in header:
+            columns = next(csv.reader([header], delimiter=delimiter))
+            if any(column.strip().lower() in FIELD_NAMES or column.strip().lower() in adapter_fields for column in columns):
+                return name, delimited_records(first, delimiter)
+    return ("jsonl" if header.startswith("{") else "text"), chain((header,), lines)
+
+
+def delimited_records(content: str, delimiter: str):
+    reader = csv.DictReader(io.StringIO(content, newline=""), delimiter=delimiter, strict=True)
+    columns = [column.strip().lower() for column in reader.fieldnames or []]
+    if len(columns) != len(set(columns)):
+        raise LogImportError("The log has duplicate column names.")
+    reader.fieldnames = columns
+    yield from reader
+
+
+def text_record(line: str) -> LogRecord:
+    priority = SYSLOG_PRIORITY.match(line)
+    syslog_level = SYSLOG_LEVELS[int(priority[1]) % 8] if priority and int(priority[1]) <= 191 else None
+    header = SYSLOG_HEADER.match(line)
+    if header:
+        return LogRecord(parse_timestamp_to_utc(header[2]), header[3], syslog_level)
+    timestamp = TIMESTAMP.match(line)
+    message = line[timestamp.end():].lstrip(" \t:-") if timestamp else line
+    token = TEXT_LEVEL.match(message)
+    level = syslog_level or (LEVELS.get(token[1].lower()) if token else None)
+    if level is None and (access := HTTP_ACCESS.search(message[:8192])):
+        level = {"4": "warning", "5": "error"}.get(access[1][0], "info")
+    return LogRecord(parse_timestamp_to_utc(timestamp[0]) if timestamp else None, "imported-log",
+                     level)
+
+
+def read_record(value, format_name: str, adapter, index: int) -> LogRecord | None:
+    if format_name in ("jsonl", "text") and (format_name == "jsonl" or value.startswith("{")):
+        try:
+            value = json.loads(value)
+        except (ValueError, RecursionError):
+            return None
+    if isinstance(value, str):
+        record, message = text_record(value), value
+    elif isinstance(value, dict) and value and None not in value:
+        get = value.get
+        message = next((get(key) for key in ("message", "msg", "raw_text") if isinstance(get(key), str)), "")
+        record = text_record(message)
+        record.level = next((LEVELS[get(key).strip().lower()] for key in ("level", "severity", "loglevel", "log_level")
+                             if isinstance(get(key), str) and get(key).strip().lower() in LEVELS), record.level)
+        normalized = adapter._normalize_record(value, index)
+        if normalized:
+            record.timestamp = normalized.event_time_utc
+            record.source = normalized.source_key
+            record.metrics = normalized.metrics
+            record.auth_success = normalized.auth_success
+            record.source_ip = normalized.source_ip
+            record.input_id = normalized.input_id
+            record.event = normalized
+    else:
+        return None
+    message = message[:8192]
+    if record.auth_success is None and (failure := SSH_FAILURE.search(message)):
+        record.auth_success = False
+        origin = SSH_ORIGIN.search(message, failure.end())
+        record.source_ip = origin[1] if origin else None
+    if record.event is not None and record.auth_success is not None:
+        record.event.kind = "auth"
+        record.event.auth_success = record.auth_success
+        record.event.source_ip = record.source_ip
+    try:
+        record.source.encode("utf-8")
+        if record.input_id is not None:
+            record.input_id.encode("utf-8")
+    except UnicodeError:
+        return None
+    return record
+
+
+def parse_records(body: bytes, adapter=None) -> tuple[str, list[tuple[int, LogRecord]], int]:
+    adapter = adapter or AutoAdapter()
+    records = []
+    malformed = 0
+    try:
+        format_name, values = detect_records(decode_log(body), adapter.explicit_map)
+        for index, value in enumerate(values, 1):
+            if index > MAX_RECORDS:
+                raise LogImportError("The file must have at most 10,000 records.")
+            record = read_record(value, format_name, adapter, index)
+            if record is None:
+                malformed += 1
+            else:
+                records.append((index, record))
+    except csv.Error:
+        raise LogImportError("The delimited log could not be parsed. Check its quoting and field sizes.") from None
+    if not records and not malformed:
+        raise LogImportError("The file has no log records.")
+    return format_name, records, malformed

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Dialog } from './Dialog';
 import { apiClient } from '../api/client';
+import { CollectorLink } from './CollectorLink';
 
 interface ExportModalProps {
   onClose: () => void;
@@ -142,7 +143,7 @@ export function ExportModal({ onClose }: ExportModalProps) {
               <span className="count-tag">State Audit</span>
             </div>
             <p className="text-xs text-muted mb-3">
-              Chronological log of entity state changes (HEALTHY, DEGRADED, UNHEALTHY) with trigger reasons.
+              Chronological log of entity state changes (Excellent, Good, Fair, Poor) with trigger reasons.
             </p>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -211,14 +212,7 @@ export function ExportModal({ onClose }: ExportModalProps) {
               Direct from local collector outbox: cryptographic proof with SHA-256 digests and SaaS receipts.
             </p>
           </div>
-          <button
-            type="button"
-            className="action-btn"
-            disabled={downloading !== null}
-            onClick={() => handleDownload('http://localhost:9001/api/local/export/proof', 'egress_proof.json', 'Egress Proof (JSON)')}
-          >
-            Download Proof (JSON)
-          </button>
+          <CollectorLink page="logs" className="action-btn">Open local report and proof exports ↗</CollectorLink>
         </div>
       </div>
 

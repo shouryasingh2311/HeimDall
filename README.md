@@ -417,3 +417,21 @@ For the full regression with Edge and all eight scenarios, follow the [verificat
 * Resilient Local Storage: Uses SQLite WAL with FULL sync for crash-resilient edge buffering without external queue dependencies.
 * Policy-Guarded Remediation: Autonomous operations execute through human-in-the-loop authorization with automatic pre-incident snapshot rollback.
 * Zero-Egress Privacy: Cryptographically guarantees that raw logs, passwords, tokens, and PII never cross network boundaries.
+
+### Workspace import and export
+
+Use **Import logs** in the left workspace pane to open the local collector. Enter the
+Collector Local Token, choose a file, and import it. The browser and command-line
+import share `backend/collector/adapters/auto_adapter.py` for format detection,
+field aliases, timestamps, and metric normalization. Text/syslog, JSON, JSONL,
+CSV, TSV, and gzip inputs are supported within 5 MiB and 10,000 records.
+Binary formats require conversion to text first. Canonical `*_pct` fields retain
+their percentage units. Percentage aliases with values between 0 and 1 are
+interpreted as ratios.
+
+Browser imports run an isolated historical review with default anomaly and
+authentication rules. Results can be downloaded using **Export JSON report**.
+The left **Export** control opens the central tenant's CSV, JSON, Markdown, and ZIP
+exports. Its local export link opens report and egress proof downloads using the
+collector token. Imported review results and central fleet history have separate
+exports. Raw log messages and hostnames are excluded from review reports.

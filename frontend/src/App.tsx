@@ -108,6 +108,10 @@ function Dashboard({ onSignOut }: { onSignOut: (message?: string) => void }) {
             </button>
           ))}
         </nav>
+        <div className="workspace-file-actions" aria-label="Import and export">
+          <CollectorLink page="logs" className="tab-btn">Import logs <span aria-hidden="true">↗</span></CollectorLink>
+          <button type="button" className="tab-btn" onClick={() => setExportOpen(true)}>Export</button>
+        </div>
         <div className="rail-bottom">
           <span className="rail-label">Collector tools</span>
           <CollectorLink page="audit">Local egress proof <span aria-hidden="true">↗</span></CollectorLink>
@@ -127,7 +131,6 @@ function Dashboard({ onSignOut }: { onSignOut: (message?: string) => void }) {
               Dark mode
             </label>
             <span className="session-tenant" title="Signed-in tenant">{apiClient.getTenantId()}</span>
-            <button className="action-btn" onClick={() => setExportOpen(true)}>Export</button>
             <button className="action-btn" onClick={() => onSignOut()}>Sign out</button>
           </div>
         </header>
